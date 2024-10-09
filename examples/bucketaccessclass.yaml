@@ -1,0 +1,10 @@
+kind: BucketAccessClass
+apiVersion: objectstorage.k8s.io/v1alpha1
+metadata:
+  name: sample-bucket-access-class
+driverName: cosi.huawei.com
+authenticationType: Key
+parameters:
+  accountSecretName: sample-account-management-secret
+  accountSecretNamespace: huawei-cosi
+  bucketPolicyModel: rw

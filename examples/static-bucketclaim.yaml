@@ -1,0 +1,10 @@
+kind: BucketClaim
+apiVersion: objectstorage.k8s.io/v1alpha1
+metadata:
+  name: sample-static-bucket-claim
+  namespace: huawei-cosi
+spec:
+  bucketClassName: sample-bucket-class
+  existingBucketName: sample-static-bucket
+  protocols:
+  - s3

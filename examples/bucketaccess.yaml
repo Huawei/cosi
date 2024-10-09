@@ -1,0 +1,10 @@
+kind: BucketAccess
+apiVersion: objectstorage.k8s.io/v1alpha1
+metadata:
+  name: sample-bucket-access
+  namespace: huawei-cosi
+spec:
+  bucketClaimName: sample-bucket-claim
+  bucketAccessClassName: sample-bucket-access-class
+  credentialsSecretName: sample-cred-secret
+  protocol: s3

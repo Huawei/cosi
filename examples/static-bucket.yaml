@@ -1,0 +1,12 @@
+kind: Bucket
+apiVersion: objectstorage.k8s.io/v1alpha1
+metadata:
+  name: sample-static-bucket
+spec:
+  driverName: cosi.huawei.com
+  bucketClassName: sample-bucket-class
+  bucketClaim: {}
+  existingBucketID: <account-service-secret-namespace>/<account-service-secret-name>/<storage-existing-bucket-name>
+  deletionPolicy: Retain
+  protocols:
+    - s3
