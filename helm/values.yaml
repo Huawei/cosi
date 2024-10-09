@@ -1,0 +1,104 @@
+# Default values for huawei-cosi.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+##################################Follows are REQUIRED##################################
+# all global values across charts go here
+global:
+  # the number of replicas of the pod.
+  # if the replicaCount greater than 1, then the function of leader election will be enabled.
+  replicaCount: 1
+
+  # securityContext applies only to containers provided by Huawei, including cosiDriver and livenessProbe.
+  securityContext:
+    # indicates whether container run as a non-root user.
+    # when runAsNonRoot is set to 'false', then parameter runAsGroup and runAsUser do not take effect.
+    # Default value: false
+    runAsNonRoot: false
+    runAsUser: 1000
+    runAsGroup: 1000
+
+    # indicates whether container runs as a privileged container.
+    # Default value: true
+    enablePrivileged: true
+
+  # Set the logging module and type.
+  logging:
+    # module supports 'file' and 'console'.
+    module: file
+    level: info
+    fileSize: 20M
+    maxBackups: 9
+
+deploy:
+  cosiController:
+    # Whether to deploy cosiController.
+    # Allowed values:
+    #   true: deploy cosi-controller during installation.
+    #   false: not deploy cosi-controller during installation.
+    # Default value: true
+    enabled: true
+    # The namespace used for cosiController deployment.
+    # Default value:  huawei-cosi
+    namespace: huawei-cosi
+
+  cosiProvisioner:
+    # The namespace used for cosiProvisioner deployment.
+    # Default value:  huawei-cosi
+    namespace: huawei-cosi
+
+    # The driver name of huawei-cosi driver.
+    # Default value:  cosi.huawei.com
+    driverName: cosi.huawei.com
+
+images:
+  # Images provided by Huawei-cosi
+  driver:
+    cosiDriver: huawei-cosi-driver:{{version}}
+    livenessProbe: huawei-cosi-liveness-probe:{{version}}
+
+  # COSI-related sidecar images provided by the Kubernetes community.
+  # These must match the appropriate Kubernetes version.
+  controller:
+    cosiController: gcr.io/k8s-staging-sig-storage/objectstorage-controller:latest
+  sidecar:
+    cosiSidecar: gcr.io/k8s-staging-sig-storage/objectstorage-sidecar:latest
+
+  # Default image pull policy for images, support [IfNotPresent, Always, Never]
+  imagePullPolicy:
+    huaweiCosiDriverImagePullPolicy: "IfNotPresent"
+    huaweiCosiLivenessProbeImagePullPolicy: "IfNotPresent"
+    cosiControllerImagePullPolicy: "IfNotPresent"
+    cosiSidecarImagePullPolicy: "IfNotPresent"
+
+# limits and requests of containers
+resources:
+  container:
+    cosiDriver:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 100m
+        memory: 256Mi
+    cosiLivenessProbe:
+      requests:
+        cpu: 10m
+        memory: 128Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
+    cosiSidecar:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 100m
+        memory: 512Mi
+    cosiController:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 100m
+        memory: 512Mi

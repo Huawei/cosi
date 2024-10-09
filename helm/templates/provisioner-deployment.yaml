@@ -1,0 +1,208 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    provisioner: cosi.huawei.com
+  name: huawei-cosi-provisioner-sa
+  namespace: {{ ((.Values.deploy).cosiProvisioner).namespace }}
+
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: huawei-cosi-sidecar-role
+  labels:
+    provisioner: cosi.huawei.com
+rules:
+  - apiGroups: [ "objectstorage.k8s.io" ]
+    resources: [ "buckets", "bucketclasses", "bucketaccesses", "bucketclaims", "bucketaccessclasses", "buckets/status", "bucketaccesses/status", "bucketclaims/status", "bucketaccessclasses/status" ]
+    verbs: [ "get", "list", "watch", "update", "create", "delete", "patch" ]
+  - apiGroups: [ "coordination.k8s.io" ]
+    resources: [ "leases" ]
+    verbs: [ "get", "watch", "list", "delete", "update", "create" ]
+  - apiGroups: [ "" ]
+    resources: [ "secrets", "events" ]
+    verbs: [ "get", "delete", "update", "create", "patch" ]
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: huawei-cosi-sidecar-role-binding
+  labels:
+    provisioner: cosi.huawei.com
+subjects:
+  - kind: ServiceAccount
+    name: huawei-cosi-provisioner-sa
+    namespace: {{ ((.Values.deploy).cosiProvisioner).namespace }}
+roleRef:
+  kind: ClusterRole
+  name: huawei-cosi-sidecar-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: huawei-cosi-driver-role
+  labels:
+    provisioner: cosi.huawei.com
+rules:
+  - apiGroups: [ "" ]
+    resources: [ "secrets" ]
+    verbs: [ "get" ]
+  - apiGroups: [ "" ]
+    resources: [ "configmaps" ]
+    verbs: [ "get", "create", "update" ]
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: huawei-cosi-driver-role-binding
+  labels:
+    provisioner: cosi.huawei.com
+subjects:
+  - kind: ServiceAccount
+    name: huawei-cosi-provisioner-sa
+    namespace: {{ ((.Values.deploy).cosiProvisioner).namespace }}
+roleRef:
+  kind: ClusterRole
+  name: huawei-cosi-driver-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: huawei-cosi-provisioner
+  namespace: {{ ((.Values.deploy).cosiProvisioner).namespace }}
+spec:
+  replicas: {{ (.Values.global).replicaCount | default 1 }}
+  selector:
+    matchLabels:
+      app: huawei-cosi
+  template:
+    metadata:
+      labels:
+        app: huawei-cosi
+    spec:
+      serviceAccountName: huawei-cosi-provisioner-sa
+      dnsPolicy: Default
+      containers:
+        - name: huawei-cosi-driver
+          image: {{ required "Must provide the .Values.images.driver.cosiDriver" ((.Values.images).driver).cosiDriver }}
+          imagePullPolicy: {{ ((.Values.images).imagePullPolicy).huaweiCosiDriverImagePullPolicy }}
+          securityContext:
+          {{ if ((.Values.global).securityContext).runAsNonRoot }}
+            runAsUser: {{ ((.Values.global).securityContext).runAsUser | default 1000 }}
+            runAsGroup: {{ ((.Values.global).securityContext).runAsGroup | default 1000 }}
+          {{ end }}
+          {{ if ((.Values.global).securityContext).enablePrivileged }}
+            privileged: true
+          {{ end }}
+          args:
+            - --driver-name={{ ((.Values.deploy).cosiProvisioner).driverName | default "cosi.huawei.com" }}
+            - --driver-address=/var/lib/cosi/cosi.sock
+            - --log-module={{ ((.Values.global).logging).module | default "file" }}
+            - --log-level={{ ((.Values.global).logging).level | default "info" }}
+            - --log-file-dir={{ ((.Values.global).logging).loggingFileDir | default "/var/log/huawei-cosi/cosi-driver" }}
+            - --log-file={{ ((.Values.global).logging).loggingFileName | default "cosi-driver" }}
+            - --log-file-size={{ ((.Values.global).logging).fileSize | default "20M" }}
+            - --max-backups={{ int ((.Values.global).logging).maxBackups | default 9 }}
+          livenessProbe:
+            failureThreshold: 5
+            httpGet:
+              path: /healthz
+              port: healthz
+            initialDelaySeconds: 10
+            periodSeconds: 60
+            timeoutSeconds: 3
+          ports:
+            - containerPort: {{ int ((.Values.deploy).cosiProvisioner).livenessProbePort | default 9808 }}
+              name: healthz
+              protocol: TCP
+          volumeMounts:
+            - mountPath: /var/lib/cosi
+              name: socket
+            # Mount the log volume according to the configuration in values.yaml
+            {{ if eq ((.Values.global).logging).module "file" }}
+            - mountPath: /var/log
+              name: log
+            {{ end }}
+            - mountPath: /etc/localtime
+              name: host-time
+          resources:
+            requests:
+              cpu: {{ ((((.Values.resources).container).cosiDriver).requests).cpu }}
+              memory: {{ ((((.Values.resources).container).cosiDriver).requests).memory }}
+            limits:
+              cpu: {{ ((((.Values.resources).container).cosiDriver).limits).cpu }}
+              memory: {{ ((((.Values.resources).container).cosiDriver).limits).memory }}
+        - name: cosi-sidecar
+          image: {{ ((.Values.images).sidecar).cosiSidecar }}
+          imagePullPolicy: {{ ((.Values.images).imagePullPolicy).cosiSidecarImagePullPolicy }}
+          args:
+            - --v=5
+          volumeMounts:
+            - mountPath: /var/lib/cosi
+              name: socket
+          resources:
+            requests:
+              cpu: {{ ((((.Values.resources).container).cosiSidecar).requests).cpu }}
+              memory: {{ ((((.Values.resources).container).cosiSidecar).requests).memory }}
+            limits:
+              cpu: {{ ((((.Values.resources).container).cosiSidecar).limits).cpu }}
+              memory: {{ ((((.Values.resources).container).cosiSidecar).limits).memory }}
+        - name: liveness-probe
+          image: {{ required "Must provide the .Values.images.driver.livenessProbe" ((.Values.images).driver).livenessProbe }}
+          imagePullPolicy: {{ ((.Values.images).imagePullPolicy).huaweiCosiLivenessProbeImagePullPolicy }}
+          securityContext:
+          {{ if ((.Values.global).securityContext).runAsNonRoot }}
+            runAsUser: {{ ((.Values.global).securityContext).runAsUser | default 1000 }}
+            runAsGroup: {{ ((.Values.global).securityContext).runAsGroup | default 1000 }}
+          {{ end }}
+          {{ if ((.Values.global).securityContext).enablePrivileged }}
+            privileged: true
+          {{ end }}
+          resources:
+            requests:
+              cpu: {{ ((((.Values.resources).container).cosiLivenessProbe).requests).cpu }}
+              memory: {{ ((((.Values.resources).container).cosiLivenessProbe).requests).memory }}
+            limits:
+              cpu: {{ ((((.Values.resources).container).cosiLivenessProbe).limits).cpu }}
+              memory: {{ ((((.Values.resources).container).cosiLivenessProbe).limits).memory }}
+          args:
+            - --log-module={{ ((.Values.global).logging).module | default "file" }}
+            - --log-level={{ ((.Values.global).logging).level | default "info" }}
+            - --log-file-dir={{ ((.Values.global).logging).loggingFileDir | default "/var/log/huawei-cosi/cosi-driver" }}
+            - --log-file={{ ((.Values.global).logging).loggingFileName | default "liveness-probe" }}
+            - --log-file-size={{ ((.Values.global).logging).fileSize | default "20M" }}
+            - --max-backups={{ int ((.Values.global).logging).maxBackups | default 9 }}
+            - --driver-address=/var/lib/cosi/cosi.sock
+            - --http-endpoint=$(POD_IP):{{ int ((.Values.deploy).cosiProvisioner).livenessProbePort | default 9808 }}
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          volumeMounts:
+            - mountPath: /var/lib/cosi
+              name: socket
+            # Mount the log volume according to the configuration in values.yaml
+            {{ if eq ((.Values.global).logging).module "file" }}
+            - mountPath: /var/log
+              name: log
+            {{ end }}
+            - mountPath: /etc/localtime
+              name: host-time
+      volumes:
+        - name: socket
+          emptyDir: { }
+        - hostPath:
+            path: /etc/localtime
+            type: File
+          name: host-time
+        - hostPath:
+            path: /var/log
+          name: log

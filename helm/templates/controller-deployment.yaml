@@ -1,0 +1,102 @@
+{{ if ((.Values.deploy).cosiController).enabled }}
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cosi-controller-sa
+  namespace: {{ ((.Values.deploy).cosiController).namespace }}
+
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: cosi-controller-ClusterRole
+rules:
+  - apiGroups: [ "objectstorage.k8s.io" ]
+    resources: [ "bucketclaims", "bucketaccesses", "bucketclaims/status", "bucketaccesses/status" ]
+    verbs: [ "get", "list", "watch", "update" ]
+  - apiGroups: [ "objectstorage.k8s.io" ]
+    resources: [ "buckets" ]
+    verbs: [ "get", "list", "watch", "update", "create", "delete" ]
+  - apiGroups: [ "objectstorage.k8s.io" ]
+    resources: [ "bucketclasses","bucketaccessclasses" ]
+    verbs: [ "get", "list" ]
+  - apiGroups: [ "" ]
+    resources: [ "events" ]
+    verbs: [ "list", "watch", "create", "update", "patch" ]
+  - apiGroups: [ "" ]
+    resources: [ "configmaps", "serviceaccounts" ]
+    verbs: [ "list", "get" ]
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: cosi-controller-clusterRoleBinding
+subjects:
+  - kind: ServiceAccount
+    name: cosi-controller-sa
+    namespace: {{ ((.Values.deploy).cosiController).namespace }}
+roleRef:
+  kind: ClusterRole
+  name: cosi-controller-ClusterRole
+  apiGroup: rbac.authorization.k8s.io
+
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: cosi-controller-role
+  namespace: {{ ((.Values.deploy).cosiController).namespace }}
+rules:
+  - apiGroups: [ "coordination.k8s.io" ]
+    resources: [ "leases" ]
+    verbs: [ "get", "watch", "list", "delete", "update", "create" ]
+
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: cosi-controller-roleBinding
+  namespace: {{ ((.Values.deploy).cosiController).namespace }}
+subjects:
+  - kind: ServiceAccount
+    name: cosi-controller-sa
+    namespace: {{ ((.Values.deploy).cosiController).namespace }}
+roleRef:
+  kind: Role
+  name: cosi-controller-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cosi-controller
+  namespace: {{ ((.Values.deploy).cosiController).namespace }}
+spec:
+  replicas: {{ (.Values.global).replicaCount | default 1 }}
+  selector:
+    matchLabels:
+      app: cosi-controller
+  template:
+    metadata:
+      labels:
+        app: cosi-controller
+    spec:
+      serviceAccountName: cosi-controller-sa
+      containers:
+        - name: cosi-controller
+          image: {{ required "Must provide the .Values.images.controller.cosiController" ((.Values.images).controller).cosiController }}
+          imagePullPolicy: {{ ((.Values.images).imagePullPolicy).cosiControllerImagePullPolicy }}
+          args:
+            - --v=5
+          resources:
+            requests:
+              cpu: {{ ((((.Values.resources).container).cosiController).requests).cpu }}
+              memory: {{ ((((.Values.resources).container).cosiController).requests).memory }}
+            limits:
+              cpu: {{ ((((.Values.resources).container).cosiController).limits).cpu }}
+              memory: {{ ((((.Values.resources).container).cosiController).limits).memory }}
+{{ end }}
