@@ -42,8 +42,10 @@ make -f Makefile VER=$1 PLATFORM=$2
 echo "Platform confirmation"
 if [[ "${PLATFORM}" == "ARM" ]];then
   PULL_FLAG="--platform=arm64"
+  BUILD_FLAG="--platform linux/arm64"
 elif [[ "${PLATFORM}" == "X86" ]];then
   PULL_FLAG="--platform=amd64"
+  BUILD_FLAG="--platform linux/amd64"
 else
   echo "Wrong PLATFORM, support [X86, ARM]"
   exit
@@ -63,9 +65,9 @@ function build_image() {
     for img in ${images[@]}; do
       echo "build the ${img} image"
       chmod +x "${img}"
-      docker build -f Dockerfile -t "${img}":"${VER}" --target "${img}" --build-arg VER="${VER}" .
-      docker save "${img}":"${VER}" -o "${img}"-"${VER}".tar
-      mv "${img}"-"${VER}".tar "${release_dir_path}/image"
+      docker build ${BUILD_FLAG} -f Dockerfile -t ${img}:${VER} --target ${img} --build-arg VER=${VER} .
+      docker save ${img}:${VER} -o ${img}-${VER}.tar
+      mv ${img}-${VER}.tar ${release_dir_path}/image
     done
 }
 build_image
