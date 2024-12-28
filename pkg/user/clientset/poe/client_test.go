@@ -16,11 +16,18 @@
 package poe
 
 import (
+	"bytes"
+	"context"
 	"crypto/tls"
 	"fmt"
+	"io"
 	"net/http"
 	"reflect"
 	"testing"
+
+	"github.com/agiledragon/gomonkey/v2"
+
+	"github.com/huawei/cosi-driver/pkg/utils"
 )
 
 func TestNewPoeClient_Success(t *testing.T) {
@@ -65,4 +72,34 @@ func TestNewPoeClient_InvalidEndpoint(t *testing.T) {
 		t.Errorf("TestNewPoeClient_InvalidEndpoint failed, gotClient= [%v], wantClient= [%v], "+
 			"gotErr= [%v], wantErr= [%v]", gotClient, nil, gotErr, wantErr)
 	}
+}
+
+func Test_Client_Call_Success(t *testing.T) {
+	// arrange
+	pec := &Client{HttpClient: &http.Client{}, Endpoint: "ip//port"}
+	ctx := context.TODO()
+	param := make(map[string]string, 0)
+
+	// mock
+	patches := gomonkey.
+		ApplyPrivateMethod(pec, "getStringToSign", func(_ *Client) string { return "getStringToSign" }).
+		ApplyPrivateMethod(pec, "getSignature", func(_ *Client) (string, error) { return "signature", nil }).
+		ApplyFuncReturn(utils.GetSortedUrlQueryString, "url").
+		ApplyFuncReturn(http.NewRequest, &http.Request{}, nil).
+		ApplyMethodReturn(pec.HttpClient, "Do", &http.Response{
+			StatusCode: http.StatusOK, Body: io.NopCloser(bytes.NewBufferString(`{"result":"ok"}`))}, nil).
+		ApplyFuncReturn(io.ReadAll, []byte{}, nil)
+
+	// act
+	_, gotErr := pec.Call(ctx, param)
+
+	// assert
+	if gotErr != nil {
+		t.Errorf("Test_Client_Call_Success failed, gotErr= [%v], wantErr= nil", gotErr)
+	}
+
+	//cleanup
+	t.Cleanup(func() {
+		patches.Reset()
+	})
 }
