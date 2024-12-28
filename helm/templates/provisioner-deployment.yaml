@@ -110,6 +110,12 @@ spec:
             - --log-file={{ ((.Values.global).logging).loggingFileName | default "cosi-driver" }}
             - --log-file-size={{ ((.Values.global).logging).fileSize | default "20M" }}
             - --max-backups={{ int ((.Values.global).logging).maxBackups | default 9 }}
+          env:
+            - name: env-namepsace
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
           livenessProbe:
             failureThreshold: 5
             httpGet:
@@ -186,6 +192,11 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
+            - name: env-namepsace
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
           volumeMounts:
             - mountPath: /var/lib/cosi
               name: socket
