@@ -95,8 +95,8 @@ chart_version=$(echo ${VER} | sed -e 's/\([0-9]\+\.[0-9]\+\.[0-9]\+\)\./\1-/')
 sed -i "s/{{version}}/${chart_version}/g" helm/Chart.yaml
 
 # zip the release package and move it to workdir
-zip -rq -o eSDK_Huawei_Storage_COSI_V"${VER}"_"${PLATFORM}"_64.zip ./*
-mv eSDK_Huawei_Storage_COSI_V"${VER}"_"${PLATFORM}"_64.zip "${workdir}"
+zip -rq -o eSDK_Cloud_Storage_COSI_V"${VER}"_"${PLATFORM}"_64.zip ./*
+mv eSDK_Cloud_Storage_COSI_V"${VER}"_"${PLATFORM}"_64.zip "${workdir}"
 
 # cd to workdir to remove tmp files
 cd "${workdir}"

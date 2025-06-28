@@ -1,5 +1,5 @@
 /*
- Copyright (c) Huawei Technologies Co., Ltd. 2024-2024. All rights reserved.
+ Copyright (c) Huawei Technologies Co., Ltd. 2024-2025. All rights reserved.
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -48,6 +48,11 @@ const (
 	containerName = "cosi-driver"
 
 	endpointDirPermission = 0755
+
+	// Since containers run as anonymous user 65532 in the community image,
+	// to enable socket file accessibility for this user context,
+	// the endpoint permissions must be set to allow read and write access for other users.
+	endpointPermission = 0666
 )
 
 func init() {
@@ -67,14 +72,12 @@ func main() {
 		return
 	}
 
-	err = version.RegisterVersion(containerName, version.COSIDriverVersion, *kubeConfigPath)
-	if err != nil {
+	if err = version.RegisterVersion(containerName, version.COSIDriverVersion, *kubeConfigPath); err != nil {
 		log.AddContext(ctx).Errorf("init version file failed, error is [%v]", err)
 		return
 	}
 
-	err = createEndpointDir(*driverAddress)
-	if err != nil {
+	if err = createEndpointDir(*driverAddress); err != nil {
 		log.AddContext(ctx).Errorf("create unix endpoint dir [%s] failed, error is [%v]", *driverAddress, err)
 		return
 	}
@@ -86,6 +89,10 @@ func main() {
 		return
 	}
 	log.AddContext(ctx).Infof("unix listen on [%s] successfully!", *driverAddress)
+
+	if err = os.Chmod(*driverAddress, endpointPermission); err != nil {
+		log.AddContext(ctx).Errorf("config cosi socket [%s] failed", *driverAddress)
+	}
 
 	svc, err := initDriverSvc(ctx, *driverName, *kubeConfigPath)
 	if err != nil {

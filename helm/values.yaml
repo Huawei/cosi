@@ -42,6 +42,13 @@ deploy:
     # Default value:  huawei-cosi
     namespace: huawei-cosi
 
+    # Define node selection constraints for node pods.
+    nodeSelector: {}
+    # Tolerations allow the scheduler to schedule pods with matching taints
+    tolerations: []
+    # Affinity: constrain which nodes your Pod can be scheduled on based on node labels
+    affinity: {}
+
   cosiProvisioner:
     # The namespace used for cosiProvisioner deployment.
     # Default value:  huawei-cosi
@@ -51,6 +58,13 @@ deploy:
     # Default value:  cosi.huawei.com
     driverName: cosi.huawei.com
 
+    # Define node selection constraints for node pods.
+    nodeSelector: {}
+    # Tolerations allow the scheduler to schedule pods with matching taints
+    tolerations: []
+    # Affinity: constrain which nodes your Pod can be scheduled on based on node labels
+    affinity: {}
+
 images:
   # Images provided by Huawei-cosi
   driver:
@@ -59,10 +73,12 @@ images:
 
   # COSI-related sidecar images provided by the Kubernetes community.
   # These must match the appropriate Kubernetes version.
+  # The image versions we provided are verified.
+  # Using other versions may lead unknown issues or unexpected behavior.
   controller:
-    cosiController: gcr.io/k8s-staging-sig-storage/objectstorage-controller:latest
+    cosiController: gcr.io/k8s-staging-sig-storage/objectstorage-controller:v20250509-controllerv0.2.0-rc1-72-g945f40a
   sidecar:
-    cosiSidecar: gcr.io/k8s-staging-sig-storage/objectstorage-sidecar:latest
+    cosiSidecar: gcr.io/k8s-staging-sig-storage/objectstorage-sidecar:v20250509-controllerv0.2.0-rc1-72-g945f40a
 
   # Default image pull policy for images, support [IfNotPresent, Always, Never]
   imagePullPolicy:
@@ -71,8 +87,13 @@ images:
     cosiControllerImagePullPolicy: "IfNotPresent"
     cosiSidecarImagePullPolicy: "IfNotPresent"
 
-# limits and requests of containers
+  # Uses secrets to pull images from private container image registry or repository
+  imagePullSecrets: []
+
+
+# Specify the amount of CPU and memory resources that a container requires
 resources:
+# To disable the default configuration, comment out the following section.
   container:
     cosiDriver:
       requests:

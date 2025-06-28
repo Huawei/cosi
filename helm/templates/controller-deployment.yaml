@@ -85,18 +85,31 @@ spec:
       labels:
         app: cosi-controller
     spec:
+      {{ if ((.Values.deploy).cosiController).affinity }}
+      affinity:
+      {{- toYaml ((.Values.deploy).cosiController).affinity | nindent 8 }}
+      {{ end }}
+      {{ if ((.Values.deploy).cosiController).tolerations }}
+      tolerations:
+      {{- toYaml ((.Values.deploy).cosiController).tolerations | nindent 8 }}
+      {{ end }}
+      {{ if ((.Values.deploy).cosiController).nodeSelector }}
+      nodeSelector:
+      {{- toYaml ((.Values.deploy).cosiController).nodeSelector | nindent 8 }}
+      {{ end }}
       serviceAccountName: cosi-controller-sa
+      {{ if .Values.images.imagePullSecrets }}
+      imagePullSecrets:
+      {{- toYaml .Values.images.imagePullSecrets | nindent 8 }}
+      {{ end }}
       containers:
         - name: cosi-controller
           image: {{ required "Must provide the .Values.images.controller.cosiController" ((.Values.images).controller).cosiController }}
           imagePullPolicy: {{ ((.Values.images).imagePullPolicy).cosiControllerImagePullPolicy }}
           args:
             - --v=5
+          {{ if ((.Values.resources).container).cosiController }}
           resources:
-            requests:
-              cpu: {{ ((((.Values.resources).container).cosiController).requests).cpu }}
-              memory: {{ ((((.Values.resources).container).cosiController).requests).memory }}
-            limits:
-              cpu: {{ ((((.Values.resources).container).cosiController).limits).cpu }}
-              memory: {{ ((((.Values.resources).container).cosiController).limits).memory }}
+          {{- toYaml .Values.resources.container.cosiController | nindent 12 }}
+          {{ end }}
 {{ end }}

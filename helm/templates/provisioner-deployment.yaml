@@ -87,8 +87,24 @@ spec:
       labels:
         app: huawei-cosi
     spec:
+      {{ if ((.Values.deploy).cosiProvisioner).affinity }}
+      affinity:
+      {{- toYaml ((.Values.deploy).cosiProvisioner).affinity | nindent 8 }}
+      {{ end }}
+      {{ if ((.Values.deploy).cosiProvisioner).tolerations }}
+      tolerations:
+      {{- toYaml ((.Values.deploy).cosiProvisioner).tolerations | nindent 8 }}
+      {{ end }}
+      {{ if ((.Values.deploy).cosiProvisioner).nodeSelector }}
+      nodeSelector:
+      {{- toYaml ((.Values.deploy).cosiProvisioner).nodeSelector | nindent 8 }}
+      {{ end }}
       serviceAccountName: huawei-cosi-provisioner-sa
       dnsPolicy: Default
+      {{ if .Values.images.imagePullSecrets }}
+      imagePullSecrets:
+      {{- toYaml .Values.images.imagePullSecrets | nindent 8 }}
+      {{ end }}
       containers:
         - name: huawei-cosi-driver
           image: {{ required "Must provide the .Values.images.driver.cosiDriver" ((.Values.images).driver).cosiDriver }}
@@ -138,13 +154,10 @@ spec:
             {{ end }}
             - mountPath: /etc/localtime
               name: host-time
+          {{ if ((.Values.resources).container).cosiDriver }}
           resources:
-            requests:
-              cpu: {{ ((((.Values.resources).container).cosiDriver).requests).cpu }}
-              memory: {{ ((((.Values.resources).container).cosiDriver).requests).memory }}
-            limits:
-              cpu: {{ ((((.Values.resources).container).cosiDriver).limits).cpu }}
-              memory: {{ ((((.Values.resources).container).cosiDriver).limits).memory }}
+          {{- toYaml .Values.resources.container.cosiDriver | nindent 12 }}
+          {{ end }}
         - name: cosi-sidecar
           image: {{ ((.Values.images).sidecar).cosiSidecar }}
           imagePullPolicy: {{ ((.Values.images).imagePullPolicy).cosiSidecarImagePullPolicy }}
@@ -153,13 +166,10 @@ spec:
           volumeMounts:
             - mountPath: /var/lib/cosi
               name: socket
+          {{ if ((.Values.resources).container).cosiSidecar }}
           resources:
-            requests:
-              cpu: {{ ((((.Values.resources).container).cosiSidecar).requests).cpu }}
-              memory: {{ ((((.Values.resources).container).cosiSidecar).requests).memory }}
-            limits:
-              cpu: {{ ((((.Values.resources).container).cosiSidecar).limits).cpu }}
-              memory: {{ ((((.Values.resources).container).cosiSidecar).limits).memory }}
+          {{- toYaml .Values.resources.container.cosiSidecar | nindent 12 }}
+          {{ end }}
         - name: liveness-probe
           image: {{ required "Must provide the .Values.images.driver.livenessProbe" ((.Values.images).driver).livenessProbe }}
           imagePullPolicy: {{ ((.Values.images).imagePullPolicy).huaweiCosiLivenessProbeImagePullPolicy }}
@@ -171,13 +181,10 @@ spec:
           {{ if ((.Values.global).securityContext).enablePrivileged }}
             privileged: true
           {{ end }}
+          {{ if ((.Values.resources).container).cosiLivenessProbe }}
           resources:
-            requests:
-              cpu: {{ ((((.Values.resources).container).cosiLivenessProbe).requests).cpu }}
-              memory: {{ ((((.Values.resources).container).cosiLivenessProbe).requests).memory }}
-            limits:
-              cpu: {{ ((((.Values.resources).container).cosiLivenessProbe).limits).cpu }}
-              memory: {{ ((((.Values.resources).container).cosiLivenessProbe).limits).memory }}
+          {{- toYaml .Values.resources.container.cosiLivenessProbe | nindent 12 }}
+          {{ end }}
           args:
             - --log-module={{ ((.Values.global).logging).module | default "file" }}
             - --log-level={{ ((.Values.global).logging).level | default "info" }}
