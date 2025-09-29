@@ -40,7 +40,7 @@ var (
 	driverName = flag.String("driver-name", "cosi.huawei.com",
 		"name for cosi driver, e.g. cosi.huawei.com")
 	logFile = flag.String("log-file", "huawei-cosi-driver",
-		"The log file name of the xuanwu volume provider")
+		"The log file name of the huawei-cosi volume provider")
 	kubeConfigPath = flag.String("kube-config-path", "", "absolute path to the kubeConfig file")
 )
 

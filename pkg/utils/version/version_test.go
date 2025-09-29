@@ -16,7 +16,7 @@ limitations under the License.
 package version
 
 import (
-	"fmt"
+	"errors"
 	"reflect"
 	"testing"
 
@@ -47,13 +47,13 @@ func Test_InitVersionConfigMap_Create_Failed(t *testing.T) {
 	containerName := "cosi-test"
 	version := "v1.0.0"
 	namespace := "cosi-test"
-	errMsg := fmt.Sprintf("create version cm failed")
-	wantErr := fmt.Errorf(errMsg)
+	errMsg := "create version cm failed"
+	wantErr := errors.New(errMsg)
 
 	// mock
 	p := gomonkey.ApplyFunc(createVersionConfigMap,
 		func(k8sClient kubernetes.Interface, containerName, version, namespace string) error {
-			return fmt.Errorf(errMsg)
+			return wantErr
 		})
 
 	// act
