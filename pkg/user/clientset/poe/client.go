@@ -97,10 +97,7 @@ func NewPoeClient(endpoint, accessKey, secretKey string, rootCA []byte) (*Client
 		return nil, fmt.Errorf("secret key is empty")
 	}
 
-	tlsConfig, err := utils.BuildTLSConfig(rootCA)
-	if err != nil {
-		return nil, fmt.Errorf("build tls config failed, error is [%v]", err)
-	}
+	tlsConfig := utils.BuildTLSConfig(rootCA)
 
 	tr := &http.Transport{
 		TLSClientConfig: tlsConfig,
@@ -187,4 +184,10 @@ func (pec *Client) getSignature(stringToSign string) (string, error) {
 	}
 
 	return base64.StdEncoding.EncodeToString(b), nil
+}
+
+// Close performs logout and cleans up session resources.
+// POE client is stateless, so this method does nothing.
+func (pec *Client) Close(ctx context.Context) error {
+	return nil
 }

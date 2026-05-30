@@ -1,5 +1,5 @@
 /*
- Copyright (c) Huawei Technologies Co., Ltd. 2024-2024. All rights reserved.
+ Copyright (c) Huawei Technologies Co., Ltd. 2024-2026. All rights reserved.
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import (
 	"github.com/agiledragon/gomonkey/v2"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	corev1 "k8s.io/api/core/v1"
@@ -35,7 +36,7 @@ import (
 	"github.com/huawei/cosi-driver/pkg/s3/agent"
 )
 
-func Test_provisionerServer_DriverCreateBucket_Success(t *testing.T) {
+func TestProvisionerServerDriverCreateBucketSuccess(t *testing.T) {
 	// arrange
 	s3Agent := &agent.S3Agent{
 		Client: &s3.S3{},
@@ -72,7 +73,7 @@ func Test_provisionerServer_DriverCreateBucket_Success(t *testing.T) {
 
 	// assert
 	if gotErr != nil || !reflect.DeepEqual(want, got) {
-		t.Errorf("Test_provisionerServer_DriverCreateBucket_Success failed, got= [%v], want= [%v]"+
+		t.Errorf("TestProvisionerServerDriverCreateBucketSuccess failed, got= [%v], want= [%v]"+
 			"gotErr= [%v], wantErr= [%v]", got, want, gotErr, nil)
 	}
 
@@ -82,7 +83,7 @@ func Test_provisionerServer_DriverCreateBucket_Success(t *testing.T) {
 	})
 }
 
-func Test_provisionerServer_DriverCreateBucket_Failed(t *testing.T) {
+func TestProvisionerServerDriverCreateBucketFailed(t *testing.T) {
 	// arrange
 	s3Agent := &agent.S3Agent{
 		Client: &s3.S3{},
@@ -118,7 +119,7 @@ func Test_provisionerServer_DriverCreateBucket_Failed(t *testing.T) {
 
 	// assert
 	if !reflect.DeepEqual(wantErr, gotErr) {
-		t.Errorf("Test_provisionerServer_DriverCreateBucket_ErrCodeBucketAlreadyExists_Failed failed, "+
+		t.Errorf("TestProvisionerServerDriverCreateBucketErrCodeBucketAlreadyExistsFailed failed, "+
 			"gotErr= [%v], wantErr= [%v]", gotErr, wantErr)
 	}
 
@@ -128,7 +129,7 @@ func Test_provisionerServer_DriverCreateBucket_Failed(t *testing.T) {
 	})
 }
 
-func Test_provisionerServer_newS3Client_Success(t *testing.T) {
+func TestProvisionerServerNewS3ClientSuccess(t *testing.T) {
 	// arrange
 	s3Agent := &agent.S3Agent{
 		Client: &s3.S3{},
@@ -166,7 +167,7 @@ func Test_provisionerServer_newS3Client_Success(t *testing.T) {
 
 	// assert
 	if gotErr != nil || !reflect.DeepEqual(want, got) {
-		t.Errorf("Test_provisionerServer_DriverCreateBucket_Success failed, got= [%v], want= [%v]"+
+		t.Errorf("TestProvisionerServerNewS3ClientSuccess failed, got= [%v], want= [%v]"+
 			", gotErr[%v] ,wantErr nil", got, want, gotErr)
 	}
 
@@ -176,4 +177,183 @@ func Test_provisionerServer_newS3Client_Success(t *testing.T) {
 			"fake-secret", metav1.DeleteOptions{})
 		mock.Reset()
 	})
+}
+
+func TestProvisionerServerDriverCreateBucketEmptyBucketName(t *testing.T) {
+	// arrange
+	s := &provisionerServer{K8sClient: fake.NewSimpleClientset()}
+	req := &cosispec.DriverCreateBucketRequest{
+		Name: "",
+		Parameters: map[string]string{
+			"accountSecretName":      "fake-secret",
+			"accountSecretNamespace": "huawei-cosi",
+		},
+	}
+	wantErr := "check DriverCreateBucket failed, error is"
+
+	// act
+	_, err := s.DriverCreateBucket(context.TODO(), req)
+
+	// assert
+	assert.Error(t, err)
+	st, ok := status.FromError(err)
+	assert.True(t, ok)
+	assert.Equal(t, codes.Internal, st.Code())
+	assert.Contains(t, err.Error(), wantErr)
+}
+
+func TestProvisionerServerDriverCreateBucketNilParameters(t *testing.T) {
+	// arrange
+	s := &provisionerServer{K8sClient: fake.NewSimpleClientset()}
+	req := &cosispec.DriverCreateBucketRequest{
+		Name:       "bucketName",
+		Parameters: nil,
+	}
+	wantErr := "check DriverCreateBucket failed, error is [empty bucket parameters]"
+	// act
+	_, err := s.DriverCreateBucket(context.TODO(), req)
+
+	// assert
+	assert.Error(t, err)
+	st, ok := status.FromError(err)
+	assert.True(t, ok)
+	assert.Equal(t, codes.Internal, st.Code())
+	assert.Equal(t, wantErr, st.Message())
+}
+
+func TestProvisionerServerDriverCreateBucketEmptySecretName(t *testing.T) {
+	// arrange
+	s := &provisionerServer{K8sClient: fake.NewSimpleClientset()}
+	req := &cosispec.DriverCreateBucketRequest{
+		Name: "bucketName",
+		Parameters: map[string]string{
+			"accountSecretName":      "",
+			"accountSecretNamespace": "huawei-cosi",
+		},
+	}
+	wantErr := "check DriverCreateBucket failed, error is [accountSecretName value is empty]"
+
+	// act
+	_, err := s.DriverCreateBucket(context.TODO(), req)
+
+	// assert
+	assert.Error(t, err)
+	st, ok := status.FromError(err)
+	assert.True(t, ok)
+	assert.Equal(t, codes.Internal, st.Code())
+	assert.Equal(t, wantErr, st.Message())
+
+}
+
+func TestProvisionerServerDriverCreateBucketEmptySecretNamespace(t *testing.T) {
+	// arrange
+	s := &provisionerServer{K8sClient: fake.NewSimpleClientset()}
+	req := &cosispec.DriverCreateBucketRequest{
+		Name: "bucketName",
+		Parameters: map[string]string{
+			"accountSecretName":      "fake-secret",
+			"accountSecretNamespace": "",
+		},
+	}
+	wantErr := "check DriverCreateBucket failed, error is [accountSecretNamespace value is empty]"
+	// act
+	_, err := s.DriverCreateBucket(context.TODO(), req)
+
+	// assert
+	assert.Error(t, err)
+	st, ok := status.FromError(err)
+	assert.True(t, ok)
+	assert.Equal(t, codes.Internal, st.Code())
+	assert.Equal(t, wantErr, st.Message())
+}
+
+func TestProvisionerServerDriverCreateBucketNewS3ClientError(t *testing.T) {
+	// arrange
+	s := &provisionerServer{K8sClient: fake.NewSimpleClientset()}
+	req := &cosispec.DriverCreateBucketRequest{
+		Name: "bucketName",
+		Parameters: map[string]string{
+			"accountSecretName":      "fake-secret",
+			"accountSecretNamespace": "huawei-cosi",
+			"bucketACL":              "bucketACL",
+			"bucketLocation":         "bucketLocation",
+		},
+	}
+	mockErr := fmt.Errorf("mock new s3 client error")
+	wantErr := "new s3 client failed, err is [mock new s3 client error]"
+	// mock
+	mocks := gomonkey.ApplyFunc(newS3Client,
+		func(ctx context.Context, clientset kubernetes.Interface,
+			parameters map[string]string) (*agent.S3Agent, error) {
+			return nil, mockErr
+		})
+	t.Cleanup(func() {
+		mocks.Reset()
+	})
+
+	// act
+	_, err := s.DriverCreateBucket(context.TODO(), req)
+
+	// assert
+	assert.Error(t, err)
+
+	st, ok := status.FromError(err)
+	assert.True(t, ok)
+
+	assert.Equal(t, codes.Internal, st.Code())
+	assert.Equal(t, wantErr, st.Message())
+}
+
+func TestProvisionerServerDriverCreateBucketSecretNotFound(t *testing.T) {
+	// arrange
+	s := &provisionerServer{K8sClient: fake.NewSimpleClientset()}
+	parameters := map[string]string{
+		"accountSecretName":      "not-exist",
+		"accountSecretNamespace": "huawei-cosi",
+	}
+	req := &cosispec.DriverCreateBucketRequest{
+		Name:       "bucketName",
+		Parameters: parameters,
+	}
+	wantErr := "failed to get account secret"
+
+	// act
+	_, err := s.DriverCreateBucket(context.TODO(), req)
+
+	// assert
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), wantErr)
+}
+
+func TestProvisionerServerDriverCreateBucketNewS3AgentError(t *testing.T) {
+	// arrange
+	s := &provisionerServer{K8sClient: fake.NewSimpleClientset()}
+	parameters := map[string]string{
+		"accountSecretName":      "fake-secret",
+		"accountSecretNamespace": "huawei-cosi",
+	}
+	req := &cosispec.DriverCreateBucketRequest{
+		Name:       "bucketName",
+		Parameters: parameters,
+	}
+	mockErr := fmt.Errorf("mock new agent error")
+	wantErr := "new s3 client failed, err is"
+
+	// mock
+	mock := gomonkey.ApplyFuncReturn(agent.NewS3Agent, (*agent.S3Agent)(nil), mockErr)
+
+	t.Cleanup(func() {
+		mock.Reset()
+
+	})
+
+	// act
+	_, err := s.DriverCreateBucket(context.TODO(), req)
+
+	// assert
+	assert.Error(t, err)
+	st, ok := status.FromError(err)
+	assert.True(t, ok)
+	assert.Equal(t, codes.Internal, st.Code())
+	assert.Contains(t, err.Error(), wantErr)
 }

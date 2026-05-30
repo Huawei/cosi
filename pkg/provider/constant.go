@@ -1,5 +1,5 @@
 /*
- Copyright (c) Huawei Technologies Co., Ltd. 2024-2024. All rights reserved.
+ Copyright (c) Huawei Technologies Co., Ltd. 2024-2026. All rights reserved.
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -17,10 +17,13 @@ package provider
 
 const (
 	// these keys are used in account secret data
-	ak       = "accessKey"
-	sk       = "secretKey"
-	endpoint = "endpoint"
-	rootCA   = "rootCA"
+	ak            = "accessKey"
+	sk            = "secretKey"
+	endpoint      = "endpoint"
+	rootCA        = "rootCA"
+	username      = "username"
+	password      = "password"
+	maxConcurrent = "maxConcurrent"
 
 	// these keys are used in access/cred secret data
 	accessAk = "accessKeyID"

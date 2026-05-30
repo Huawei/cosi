@@ -98,22 +98,19 @@ func ContainsElement(elements []string, target string) bool {
 }
 
 // BuildTLSConfig is used to build tls config
-func BuildTLSConfig(rootCA []byte) (*tls.Config, error) {
-	var tlsConfig *tls.Config
+func BuildTLSConfig(rootCA []byte) *tls.Config {
+	useCA := len(rootCA) != 0
 
-	tlsConfig = &tls.Config{
-		InsecureSkipVerify: true,
+	tlsConfig := &tls.Config{
+		InsecureSkipVerify: !useCA,
+		MinVersion:         tls.VersionTLS12,
 	}
 
-	if len(rootCA) != 0 {
+	if useCA {
 		caCertPool := x509.NewCertPool()
 		caCertPool.AppendCertsFromPEM(rootCA)
-		tlsConfig = &tls.Config{
-			InsecureSkipVerify: false,
-			RootCAs:            caCertPool,
-			MinVersion:         tls.VersionTLS12,
-		}
+		tlsConfig.RootCAs = caCertPool
 	}
 
-	return tlsConfig, nil
+	return tlsConfig
 }

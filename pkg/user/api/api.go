@@ -27,4 +27,7 @@ type UserAPI interface {
 	CreateUserAccess(context.Context, *CreateUserAccessInput) (*CreateUserAccessOutput, error)
 	DeleteUserAccess(context.Context, *DeleteUserAccessInput) (*DeleteUserAccessOutput, error)
 	ListUserAccessKeys(context.Context, *ListUserAccessKeysInput) (*ListUserAccessKeysOutput, error)
+
+	// Close performs logout and cleans up session resources.
+	Close(ctx context.Context) error
 }

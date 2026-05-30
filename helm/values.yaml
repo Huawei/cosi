@@ -76,9 +76,10 @@ images:
   # The image versions we provided are verified.
   # Using other versions may lead unknown issues or unexpected behavior.
   controller:
-    cosiController: gcr.io/k8s-staging-sig-storage/objectstorage-controller:v20250509-controllerv0.2.0-rc1-72-g945f40a
+    cosiController: gcr.io/k8s-staging-sig-storage/objectstorage-controller:release-0.2
   sidecar:
-    cosiSidecar: gcr.io/k8s-staging-sig-storage/objectstorage-sidecar:v20250509-controllerv0.2.0-rc1-72-g945f40a
+    cosiSidecar: gcr.io/k8s-staging-sig-storage/objectstorage-sidecar:release-0.2
+
 
   # Default image pull policy for images, support [IfNotPresent, Always, Never]
   imagePullPolicy:

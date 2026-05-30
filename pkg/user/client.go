@@ -18,12 +18,15 @@ import (
 	"fmt"
 
 	"github.com/huawei/cosi-driver/pkg/user/api"
+	"github.com/huawei/cosi-driver/pkg/user/clientset/centralized"
 	"github.com/huawei/cosi-driver/pkg/user/clientset/poe"
 )
 
 const (
 	// PoeType is the poe type of user client
 	PoeType = "POE"
+	// CentralizedType is the centralized type of user client
+	CentralizedType = "CENTRALIZED"
 )
 
 // Config contains the cfg information required for init UserClient
@@ -33,6 +36,12 @@ type Config struct {
 	SecretKey  string
 	Endpoint   string
 	RootCA     []byte
+	// Username is the username for centralized client authentication
+	Username string
+	// Password is the password for centralized client authentication
+	Password string
+	// MaxConcurrent is the maximum number of concurrent requests (optional)
+	MaxConcurrent int
 }
 
 // NewUserClient return a user client according to api type
@@ -40,7 +49,22 @@ func NewUserClient(config Config) (api.UserAPI, error) {
 	switch config.ClientType {
 	case PoeType:
 		return poe.NewPoeClient(config.Endpoint, config.AccessKey, config.SecretKey, config.RootCA)
+	case CentralizedType:
+		return newCentralizedClient(config)
 	default:
 		return nil, fmt.Errorf("unknown user client type [%s]", config.ClientType)
 	}
+}
+
+// newCentralizedClient creates a new centralized client instance
+func newCentralizedClient(config Config) (api.UserAPI, error) {
+	clientConfig := &centralized.Config{
+		Username:      config.Username,
+		Password:      config.Password,
+		Endpoint:      config.Endpoint,
+		RootCA:        config.RootCA,
+		MaxConcurrent: config.MaxConcurrent,
+	}
+
+	return centralized.NewClient(clientConfig)
 }

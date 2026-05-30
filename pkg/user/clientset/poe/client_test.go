@@ -18,14 +18,13 @@ package poe
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
 	"fmt"
 	"io"
 	"net/http"
-	"reflect"
 	"testing"
 
 	"github.com/agiledragon/gomonkey/v2"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/huawei/cosi-driver/pkg/utils"
 )
@@ -36,24 +35,19 @@ func TestNewPoeClient_Success(t *testing.T) {
 	sk := "test-sk"
 	endpoint := "https://x.xx.xx.xx:443"
 	wantEndpoint := "https://x.xx.xx.xx:9443"
-	tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
-	httpClient := &http.Client{Timeout: connectionTimeout, Transport: tr}
-	rootCA := []byte("")
-	wantClient := &Client{
-		AccessKey:  ak,
-		SecretKey:  sk,
-		Endpoint:   wantEndpoint,
-		HttpClient: httpClient,
-		RootCA:     rootCA,
-	}
+	rootCA := []byte("xxx")
 
 	// act
 	gotClient, err := NewPoeClient(endpoint, ak, sk, rootCA)
 
 	// assert
-	if !reflect.DeepEqual(gotClient, wantClient) || err != nil {
-		t.Errorf("TestNewPoeClient_Success failed, gotClient= [%v], wantClient= [%v]", gotClient, wantClient)
-	}
+	assert.NoError(t, err)
+	assert.NotNil(t, gotClient)
+	assert.Equal(t, ak, gotClient.AccessKey)
+	assert.Equal(t, sk, gotClient.SecretKey)
+	assert.Equal(t, wantEndpoint, gotClient.Endpoint)
+	assert.Equal(t, rootCA, gotClient.RootCA)
+	assert.NotNil(t, gotClient.HttpClient)
 }
 
 func TestNewPoeClient_InvalidEndpoint(t *testing.T) {

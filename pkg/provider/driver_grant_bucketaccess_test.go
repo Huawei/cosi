@@ -1,5 +1,5 @@
 /*
- Copyright (c) Huawei Technologies Co., Ltd. 2024-2024. All rights reserved.
+ Copyright (c) Huawei Technologies Co., Ltd. 2024-2026. All rights reserved.
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -18,17 +18,16 @@ package provider
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"testing"
 
 	"github.com/agiledragon/gomonkey/v2"
+	"github.com/stretchr/testify/assert"
 	coreV1 "k8s.io/api/core/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
 	cosispec "sigs.k8s.io/container-object-storage-interface-spec"
 
 	"github.com/huawei/cosi-driver/pkg/s3/agent"
-	"github.com/huawei/cosi-driver/pkg/s3/policy"
 	"github.com/huawei/cosi-driver/pkg/user"
 	"github.com/huawei/cosi-driver/pkg/user/api"
 	"github.com/huawei/cosi-driver/pkg/user/clientset/poe"
@@ -56,20 +55,18 @@ func Test_ProvisionerServer_DriverGrantBucketAccess_Success(t *testing.T) {
 	}
 
 	// mock
-	patches := gomonkey.ApplyFuncReturn(checkDriverGrantBucketAccessRequest, nil).
-		ApplyFuncReturn(fetchDataFromResourceId, bcResource, bcSecret, nil).
-		ApplyFuncReturn(checkBucketExistence, nil).
-		ApplyFuncReturn(registerUser, userData, nil).
-		ApplyFuncReturn(setBucketPolicy, nil)
+	patches := gomonkey.ApplyFuncReturn(checkDriverGrantBucketAccessRequest, nil)
+	patches.ApplyFuncReturn(fetchDataFromResourceId, bcResource, bcSecret, nil)
+	patches.ApplyFuncReturn(checkBucketExistence, nil)
+	patches.ApplyFuncReturn(registerUser, userData, nil)
+	patches.ApplyFuncReturn(setBucketPolicy, nil)
 
 	// act
 	gotResponse, gotErr := s.DriverGrantBucketAccess(ctx, req)
 
 	// assert
-	if !reflect.DeepEqual(gotResponse, wantResponse) || gotErr != nil {
-		t.Errorf("Test_ProvisionerServer_DriverGrantBucketAccess_Success failed, "+
-			"wantResponse= [%v], gotResponse= [%v], wantErr= nil, gotErr= [%v]", wantResponse, gotResponse, gotErr)
-	}
+	assert.NoError(t, gotErr)
+	assert.Equal(t, wantResponse, gotResponse)
 
 	// cleanup
 	t.Cleanup(func() {
@@ -80,7 +77,13 @@ func Test_ProvisionerServer_DriverGrantBucketAccess_Success(t *testing.T) {
 func Test_RegisterUser_NewUser_Success(t *testing.T) {
 	// arrange
 	ctx := context.TODO()
-	accountSecret := &coreV1.Secret{}
+	accountSecret := &coreV1.Secret{
+		Data: map[string][]byte{
+			ak:       []byte("fake-ak"),
+			sk:       []byte("fake-sk"),
+			endpoint: []byte("https://xxxx.com:8088"),
+		},
+	}
 	userName := "user-demo"
 	userArn := "arn-id"
 	userId := "user-id"
@@ -90,34 +93,22 @@ func Test_RegisterUser_NewUser_Success(t *testing.T) {
 	c := &poe.Client{}
 	createUserResp := &api.CreateUserOutput{UserName: userName, UserID: userId, Arn: userArn}
 	createUserAccessResp := &api.CreateUserAccessOutput{AccessKeyId: userAk, SecretAccessKey: userSk}
-
-	wantUserData := userInfo{userArn: userArn, accessKeyId: userAk, accessSecretKey: userSk}
+	wantUserData := &userInfo{userArn: userArn, accessKeyId: userAk, accessSecretKey: userSk}
 
 	// mock
-	mock := gomonkey.
-		ApplyFunc(user.NewUserClient, func(user.Config) (api.UserAPI, error) {
-			return c, nil
-		}).ApplyMethod(reflect.TypeOf(c), "GetUser",
-		func(_ *poe.Client, ctx context.Context, in *api.GetUserInput) (*api.GetUserOutput, error) {
-			return nil, nil
-		}).ApplyMethod(reflect.TypeOf(c), "CreateUser",
-		func(_ *poe.Client, ctx context.Context, in *api.CreateUserInput) (*api.CreateUserOutput, error) {
-			return createUserResp, nil
-		}).ApplyMethod(reflect.TypeOf(c), "CreateUserAccess",
-		func(_ *poe.Client, ctx context.Context, in *api.CreateUserAccessInput) (*api.CreateUserAccessOutput, error) {
-			return createUserAccessResp, nil
-		})
+	mock := gomonkey.ApplyFuncReturn(user.NewUserClient, c, nil)
+	mock.ApplyMethodReturn(c, "GetUser", nil, nil)
+	mock.ApplyMethodReturn(c, "CreateUser", createUserResp, nil)
+	mock.ApplyMethodReturn(c, "CreateUserAccess", createUserAccessResp, nil)
 
 	// act
 	gotUserData, gotErr := registerUser(ctx, req, accountSecret)
 
 	// assert
-	if reflect.DeepEqual(gotUserData, wantUserData) || gotErr != nil {
-		t.Errorf("Test_RegisterUser_NewUser_Success failed, got= [%v], want= [%v], "+
-			"gotErr= [%v], wantErr= nil", gotUserData, wantUserData, gotErr)
-	}
+	assert.NoError(t, gotErr)
+	assert.Equal(t, wantUserData, gotUserData)
 
-	//cleanup
+	// cleanup
 	t.Cleanup(func() {
 		mock.Reset()
 	})
@@ -138,26 +129,17 @@ func Test_SetBucketPolicy_NewPolicy_Success(t *testing.T) {
 	userData := &userInfo{userArn: userArn, accessKeyId: userAk, accessSecretKey: userSk}
 
 	// mock
-	mock := gomonkey.
-		ApplyFunc(agent.NewS3Agent, func(agent.Config) (*agent.S3Agent, error) {
-			return c, nil
-		}).ApplyMethod(reflect.TypeOf(c), "GetBucketPolicy",
-		func(_ *agent.S3Agent, ctx context.Context, bucketName string) (*policy.BucketPolicy, error) {
-			return nil, nil
-		}).ApplyMethod(reflect.TypeOf(c), "PutBucketPolicy",
-		func(_ *agent.S3Agent, ctx context.Context, bucketName string, bp *policy.BucketPolicy) error {
-			return nil
-		})
+	mock := gomonkey.ApplyFuncReturn(agent.NewS3Agent, c, nil)
+	mock.ApplyMethodReturn(c, "GetBucketPolicy", nil, nil)
+	mock.ApplyMethodReturn(c, "PutBucketPolicy", nil)
 
 	// act
 	gotErr := setBucketPolicy(ctx, req, accountSecret, userData, bucketName)
 
 	// assert
-	if gotErr != nil {
-		t.Errorf("Test_SetBucketPolicy_NewPolicy_Success failed, gotErr= [%v], wantErr= nil", gotErr)
-	}
+	assert.NoError(t, gotErr)
 
-	//cleanup
+	// cleanup
 	t.Cleanup(func() {
 		mock.Reset()
 	})
@@ -173,10 +155,8 @@ func Test_CheckDriverGrantBucketAccessRequest_EmptyBucketId(t *testing.T) {
 	gotErr := checkDriverGrantBucketAccessRequest(req)
 
 	// assert
-	if gotErr == nil || gotErr.Error() != wantErr.Error() {
-		t.Errorf("Test_CheckDriverGrantBucketAccessRequest_EmptyBucketId failed, "+
-			"gotErr= [%s], wantErr= [%s]", gotErr, wantErr)
-	}
+	assert.Error(t, gotErr)
+	assert.Equal(t, wantErr.Error(), gotErr.Error())
 }
 
 func Test_CheckDriverGrantBucketAccessRequest_EmptyUserName(t *testing.T) {
@@ -190,10 +170,8 @@ func Test_CheckDriverGrantBucketAccessRequest_EmptyUserName(t *testing.T) {
 	gotErr := checkDriverGrantBucketAccessRequest(req)
 
 	// assert
-	if gotErr == nil || gotErr.Error() != wantErr.Error() {
-		t.Errorf("Test_CheckDriverGrantBucketAccessRequest_EmptyUserName failed, "+
-			"gotErr= [%v], wantErr= [%v]", gotErr, wantErr)
-	}
+	assert.Error(t, gotErr)
+	assert.Equal(t, wantErr.Error(), gotErr.Error())
 }
 
 func Test_CheckDriverGrantBucketAccessRequest_IAMAuthenticationType(t *testing.T) {
@@ -209,10 +187,8 @@ func Test_CheckDriverGrantBucketAccessRequest_IAMAuthenticationType(t *testing.T
 	gotErr := checkDriverGrantBucketAccessRequest(req)
 
 	// assert
-	if gotErr == nil || gotErr.Error() != wantErr.Error() {
-		t.Errorf("Test_CheckDriverGrantBucketAccessRequest_IAMAuthenticationType failed, "+
-			"gotErr= [%v], wantErr= [%v]", gotErr, wantErr)
-	}
+	assert.Error(t, gotErr)
+	assert.Equal(t, wantErr.Error(), gotErr.Error())
 }
 
 func Test_CheckDriverGrantBucketAccessRequest_UnknownAuthenticationType(t *testing.T) {
@@ -228,10 +204,8 @@ func Test_CheckDriverGrantBucketAccessRequest_UnknownAuthenticationType(t *testi
 	gotErr := checkDriverGrantBucketAccessRequest(req)
 
 	// assert
-	if gotErr == nil || gotErr.Error() != wantErr.Error() {
-		t.Errorf("Test_CheckDriverGrantBucketAccessRequest_UnknownAuthenticationType failed, "+
-			"gotErr= [%v], wantErr= [%v]", gotErr, wantErr)
-	}
+	assert.Error(t, gotErr)
+	assert.Equal(t, wantErr.Error(), gotErr.Error())
 }
 
 func Test_CheckDriverGrantBucketAccessRequest_MissingAccountSecretName(t *testing.T) {
@@ -248,10 +222,8 @@ func Test_CheckDriverGrantBucketAccessRequest_MissingAccountSecretName(t *testin
 	gotErr := checkDriverGrantBucketAccessRequest(req)
 
 	// assert
-	if gotErr == nil || gotErr.Error() != wantErr.Error() {
-		t.Errorf("Test_CheckDriverGrantBucketAccessRequest_MissingAccountSecretName failed, "+
-			"gotErr= [%v], wantErr= [%v]", gotErr, wantErr)
-	}
+	assert.Error(t, gotErr)
+	assert.Equal(t, wantErr.Error(), gotErr.Error())
 }
 
 func Test_CheckDriverGrantBucketAccessRequest_MissingAccountSecretNamespace(t *testing.T) {
@@ -270,10 +242,8 @@ func Test_CheckDriverGrantBucketAccessRequest_MissingAccountSecretNamespace(t *t
 	gotErr := checkDriverGrantBucketAccessRequest(req)
 
 	// assert
-	if gotErr == nil || gotErr.Error() != wantErr.Error() {
-		t.Errorf("Test_CheckDriverGrantBucketAccessRequest_MissingAccountSecretNamespace failed, "+
-			"gotErr= [%v], wantErr= [%v]", gotErr, wantErr)
-	}
+	assert.Error(t, gotErr)
+	assert.Equal(t, wantErr.Error(), gotErr.Error())
 }
 
 func Test_CheckDriverGrantBucketAccessRequest_InvalidBucketPolicyModel(t *testing.T) {
@@ -294,10 +264,8 @@ func Test_CheckDriverGrantBucketAccessRequest_InvalidBucketPolicyModel(t *testin
 	gotErr := checkDriverGrantBucketAccessRequest(req)
 
 	// assert
-	if gotErr == nil || gotErr.Error() != wantErr.Error() {
-		t.Errorf("Test_CheckDriverGrantBucketAccessRequest_InvalidBucketPolicyModel failed, "+
-			"gotErr= [%v], wantErr= [%v]", gotErr, wantErr)
-	}
+	assert.Error(t, gotErr)
+	assert.Equal(t, wantErr.Error(), gotErr.Error())
 }
 
 func Test_CheckDriverGrantBucketAccessRequest_NormalCase(t *testing.T) {
@@ -316,16 +284,14 @@ func Test_CheckDriverGrantBucketAccessRequest_NormalCase(t *testing.T) {
 	gotErr := checkDriverGrantBucketAccessRequest(req)
 
 	// assert
-	if gotErr != nil {
-		t.Errorf("Test_CheckDriverGrantBucketAccessRequest_NormalCase failed, gotErr= [%v], wantErr= [nil]", gotErr)
-	}
+	assert.NoError(t, gotErr)
 }
 
 func Test_BuildCredentials_Success(t *testing.T) {
 	// arrange
 	bcAccountSecret := &coreV1.Secret{
 		Data: map[string][]byte{
-			"endpoint": []byte("https://example.com"),
+			"endpoint": []byte("https://xxxx.com"),
 		},
 	}
 	userData := &userInfo{
@@ -344,10 +310,7 @@ func Test_BuildCredentials_Success(t *testing.T) {
 			endpoint: string(bcAccountSecret.Data[endpoint]),
 		},
 	}
-	if !reflect.DeepEqual(wantCred.Secrets, gotCredDetails[s3Protocol].Secrets) {
-		t.Errorf("Test_BuildCredentials_Success failed, gotCredSecret= [%v], wantCredSecret= [%v]",
-			gotCredDetails[s3Protocol].Secrets, wantCred.Secrets)
-	}
+	assert.Equal(t, wantCred.Secrets, gotCredDetails[s3Protocol].Secrets)
 }
 
 func Test_CheckBucketExistence_Success(t *testing.T) {
@@ -358,21 +321,14 @@ func Test_CheckBucketExistence_Success(t *testing.T) {
 	secret := &coreV1.Secret{}
 
 	// mock
-	mock := gomonkey.
-		ApplyFunc(agent.NewS3Agent, func(agent.Config) (*agent.S3Agent, error) {
-			return c, nil
-		}).ApplyMethod(reflect.TypeOf(c), "CheckBucketExist",
-		func(_ *agent.S3Agent, ctx context.Context, bucketName string) error {
-			return nil
-		})
+	mock := gomonkey.ApplyFuncReturn(agent.NewS3Agent, c, nil)
+	mock.ApplyMethodReturn(c, "CheckBucketExist", nil)
 
 	// act
 	gotErr := checkBucketExistence(ctx, secret, bucketName)
 
 	// assert
-	if gotErr != nil {
-		t.Errorf("Test_CheckBucketExistence_Success failed, wantErr= nil, gotErr= [%v]", gotErr)
-	}
+	assert.NoError(t, gotErr)
 
 	// cleanup
 	t.Cleanup(func() {
@@ -389,20 +345,16 @@ func Test_CheckBucketExistence_NewAgent_Failed(t *testing.T) {
 	wantErr := fmt.Errorf("new s3 agent failed, error is [%v]", angentErr)
 
 	// mock
-	mock := gomonkey.
-		ApplyFunc(agent.NewS3Agent, func(agent.Config) (*agent.S3Agent, error) {
-			return nil, angentErr
-		})
+	mock := gomonkey.ApplyFuncReturn(agent.NewS3Agent, nil, angentErr)
 
 	// act
 	gotErr := checkBucketExistence(ctx, secret, bucketName)
 
 	// assert
-	if gotErr.Error() != wantErr.Error() {
-		t.Errorf("Test_CheckBucketExistence_NewAgent_Failed failed, wangErr= [%v], gotErr= [%v]", wantErr, gotErr)
-	}
+	assert.Error(t, gotErr)
+	assert.Equal(t, wantErr.Error(), gotErr.Error())
 
-	//cleanup
+	// cleanup
 	t.Cleanup(func() {
 		mock.Reset()
 	})

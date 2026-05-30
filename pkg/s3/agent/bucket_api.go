@@ -45,7 +45,12 @@ func (s *S3Agent) CreateBucket(ctx context.Context, bucketName, acl, location st
 
 	_, err := s.Client.CreateBucket(bucketInput)
 	if err != nil {
-		return fmt.Errorf("create bucket failed, error is [%v]", err)
+		var awsErr awserr.Error
+		if errors.As(err, &awsErr) && (awsErr.Code() == s3.ErrCodeBucketAlreadyOwnedByYou) {
+			log.AddContext(ctx).Infof("bucket [%s] already exists, reason [%s]", bucketName, err.Error())
+		} else {
+			return fmt.Errorf("create bucket failed, error is [%v]", err)
+		}
 	}
 
 	log.AddContext(ctx).Infof("create bucket [%s] successfully", bucketName)

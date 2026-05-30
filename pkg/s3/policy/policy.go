@@ -20,7 +20,7 @@ import "encoding/json"
 // BucketPolicy represents set of policy statements for a single bucket.
 type BucketPolicy struct {
 	// Id identifies the bucket policy, optional
-	Id string `json:"Id"`
+	Id string `json:"Id,omitempty"`
 
 	// Version is the version of the BucketPolicy data structure
 	// should always be '2012-10-17'

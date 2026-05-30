@@ -93,7 +93,7 @@ func checkDriverCreateBucketRequest(req *cosispec.DriverCreateBucketRequest) err
 	}
 
 	if req.GetParameters() == nil {
-		return fmt.Errorf("empty bucket Parameters")
+		return fmt.Errorf("empty bucket parameters")
 	}
 
 	parameters := req.GetParameters()

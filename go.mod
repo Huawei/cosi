@@ -6,6 +6,7 @@ require (
 	github.com/agiledragon/gomonkey/v2 v2.11.0
 	github.com/aws/aws-sdk-go v1.55.3
 	github.com/sirupsen/logrus v1.9.3
+	github.com/stretchr/testify v1.11.1
 	google.golang.org/grpc v1.65.0
 	k8s.io/api v0.31.1
 	k8s.io/apimachinery v0.31.1
@@ -37,6 +38,7 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
+	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	golang.org/x/net v0.26.0 // indirect

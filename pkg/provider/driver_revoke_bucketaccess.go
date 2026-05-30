@@ -1,5 +1,5 @@
 /*
- Copyright (c) Huawei Technologies Co., Ltd. 2024-2024. All rights reserved.
+ Copyright (c) Huawei Technologies Co., Ltd. 2024-2026. All rights reserved.
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -27,7 +27,6 @@ import (
 
 	"github.com/huawei/cosi-driver/pkg/s3/agent"
 	"github.com/huawei/cosi-driver/pkg/s3/errors"
-	"github.com/huawei/cosi-driver/pkg/user"
 	"github.com/huawei/cosi-driver/pkg/user/api"
 	"github.com/huawei/cosi-driver/pkg/utils"
 	"github.com/huawei/cosi-driver/pkg/utils/log"
@@ -36,6 +35,7 @@ import (
 // DriverRevokeBucketAccess is used to revokes all access to a particular bucket from a principal
 func (s *provisionerServer) DriverRevokeBucketAccess(ctx context.Context,
 	req *cosispec.DriverRevokeBucketAccessRequest) (*cosispec.DriverRevokeBucketAccessResponse, error) {
+	log.AddContext(ctx).Infof("handle DriverRevokeBucketAccess request, request is [%+v]", req)
 	defer utils.RecoverPanic(ctx)
 
 	// When processing the same bucket, it needs to add mutex lock.
@@ -43,11 +43,9 @@ func (s *provisionerServer) DriverRevokeBucketAccess(ctx context.Context,
 	s.keyLock.Lock(req.GetBucketId())
 	defer s.keyLock.Unlock(req.GetBucketId())
 
-	log.AddContext(ctx).Infof("handle DriverRevokeBucketAccess request, request is [%+v]", req)
-
 	err := checkDriverRevokeBucketAccess(req)
 	if err != nil {
-		msg := fmt.Sprintf("check DriverGrantBucketAccessRequest failed, error is [%v]", err)
+		msg := fmt.Sprintf("check DriverRevokeBucketAccessRequest failed, error is [%v]", err)
 		log.AddContext(ctx).Errorf(msg)
 		return nil, status.Error(codes.Internal, msg)
 	}
@@ -100,19 +98,11 @@ func checkDriverRevokeBucketAccess(req *cosispec.DriverRevokeBucketAccessRequest
 }
 
 func removeUser(ctx context.Context, bacAccountSecret *coreV1.Secret, userName string) error {
-	// The user client type information will be obtained from the req config in the future.
-	// Currently, default poe type
-	userClient, err := user.NewUserClient(
-		user.Config{
-			ClientType: user.PoeType,
-			AccessKey:  string(bacAccountSecret.Data[ak]),
-			SecretKey:  string(bacAccountSecret.Data[sk]),
-			Endpoint:   string(bacAccountSecret.Data[endpoint]),
-			RootCA:     bacAccountSecret.Data[rootCA],
-		})
+	userClient, err := buildClientFromSecret(ctx, bacAccountSecret)
 	if err != nil {
-		return fmt.Errorf("new user client failed, error is [%v]", err)
+		return fmt.Errorf("build client from secret failed, error is [%v]", err)
 	}
+	defer userClient.Close(ctx)
 
 	listUserAksResp, err := userClient.ListUserAccessKeys(ctx,
 		&api.ListUserAccessKeysInput{UserName: userName})
