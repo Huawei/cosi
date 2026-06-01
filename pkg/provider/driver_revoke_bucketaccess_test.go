@@ -1,5 +1,5 @@
 /*
- Copyright (c) Huawei Technologies Co., Ltd. 2024-2024. All rights reserved.
+ Copyright (c) Huawei Technologies Co., Ltd. 2024-2026. All rights reserved.
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -18,13 +18,14 @@ package provider
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"testing"
 
 	"github.com/agiledragon/gomonkey/v2"
+	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	coreV1 "k8s.io/api/core/v1"
+	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
 	cosispec "sigs.k8s.io/container-object-storage-interface-spec"
 
@@ -62,10 +63,8 @@ func Test_ProvisionerServer_DriverRevokeBucketAccess_Success(t *testing.T) {
 	gotResponse, gotErr := s.DriverRevokeBucketAccess(ctx, req)
 
 	// assert
-	if !reflect.DeepEqual(gotResponse, wantResponse) || gotErr != nil {
-		t.Errorf("Test_ProvisionerServer_DriverRevokeBucketAccess_Success failed, "+
-			"wantResponse= [%v], gotResponse= [%v], wantErr= nil, gotErr= [%v]", wantResponse, gotResponse, gotErr)
-	}
+	assert.NoError(t, gotErr)
+	assert.Equal(t, wantResponse, gotResponse)
 
 	// cleanup
 	t.Cleanup(func() {
@@ -82,7 +81,7 @@ func Test_ProvisionerServer_DriverRevokeBucketAccess_CheckDriverRevokeBucketAcce
 		keyLock:   keylock.NewKeyLock(keyLockSize),
 	}
 	checkErr := fmt.Errorf("check error")
-	msg := fmt.Sprintf("check DriverGrantBucketAccessRequest failed, error is [%v]", checkErr)
+	msg := fmt.Sprintf("check DriverRevokeBucketAccessRequest failed, error is [%v]", checkErr)
 	wantErr := status.Error(codes.Internal, msg)
 
 	// mock
@@ -92,10 +91,8 @@ func Test_ProvisionerServer_DriverRevokeBucketAccess_CheckDriverRevokeBucketAcce
 	gotResponse, gotErr := s.DriverRevokeBucketAccess(ctx, req)
 
 	// assert
-	if gotResponse != nil || !reflect.DeepEqual(gotErr, wantErr) {
-		t.Errorf("Test_ProvisionerServer_DriverRevokeBucketAccess_CheckDriverRevokeBucketAccess_Failed failed, "+
-			"wantResponse= nil, gotResponse= [%v], wantErr= [%v], gotErr= [%v]", gotResponse, wantErr, gotErr)
-	}
+	assert.Nil(t, gotResponse)
+	assert.Equal(t, wantErr.Error(), gotErr.Error())
 
 	// cleanup
 	t.Cleanup(func() {
@@ -116,17 +113,15 @@ func Test_ProvisionerServer_DriverRevokeBucketAccess_FetchBacDataFromResourceId_
 	wantErr := status.Error(codes.Internal, msg)
 
 	// mock
-	patches := gomonkey.ApplyFuncReturn(checkDriverRevokeBucketAccess, nil).
-		ApplyFuncReturn(fetchDataFromResourceId, nil, nil, fetchErr)
+	patches := gomonkey.ApplyFuncReturn(checkDriverRevokeBucketAccess, nil)
+	patches.ApplyFuncReturn(fetchDataFromResourceId, nil, nil, fetchErr)
 
 	// act
 	gotResponse, gotErr := s.DriverRevokeBucketAccess(ctx, req)
 
 	// assert
-	if gotResponse != nil || !reflect.DeepEqual(gotErr, wantErr) {
-		t.Errorf("Test_ProvisionerServer_DriverRevokeBucketAccess_FetchBacDataFromResourceId_Failed failed, "+
-			"wantResponse= nil, gotResponse= [%v], wantErr= [%v], gotErr= [%v]", gotResponse, wantErr, gotErr)
-	}
+	assert.Nil(t, gotResponse)
+	assert.Equal(t, wantErr.Error(), gotErr.Error())
 
 	// cleanup
 	t.Cleanup(func() {
@@ -159,10 +154,8 @@ func Test_ProvisionerServer_DriverRevokeBucketAccess_RemoveUser_Failed(t *testin
 	gotResponse, gotErr := s.DriverRevokeBucketAccess(ctx, req)
 
 	// assert
-	if gotResponse != nil || !reflect.DeepEqual(gotErr, wantErr) {
-		t.Errorf("Test_ProvisionerServer_DriverRevokeBucketAccess_RemoveUser_Failed failed, "+
-			"wantResponse= nil, gotResponse= [%v], wantErr= [%v], gotErr= [%v]", gotResponse, wantErr, gotErr)
-	}
+	assert.Nil(t, gotResponse)
+	assert.Equal(t, wantErr.Error(), gotErr.Error())
 
 	// cleanup
 	t.Cleanup(func() {
@@ -189,8 +182,8 @@ func Test_ProvisionerServer_DriverRevokeBucketAccess_RemoveBucketPolicyStatement
 	wantErr := status.Error(codes.Internal, msg)
 
 	// mock
-	patches := gomonkey.ApplyFuncReturn(checkDriverRevokeBucketAccess, nil).
-		ApplyFuncReturn(fetchDataFromResourceId, bacResource, bacSecret, nil).
+	patches := gomonkey.ApplyFuncReturn(checkDriverRevokeBucketAccess, nil)
+	patches.ApplyFuncReturn(fetchDataFromResourceId, bacResource, bacSecret, nil).
 		ApplyFuncReturn(removeUser, nil).
 		ApplyFuncReturn(fetchDataFromResourceId, bcResource, bcSecret, nil).
 		ApplyFuncReturn(removeBucketPolicyStatement, removeBucketPolicyStatementErr)
@@ -199,10 +192,8 @@ func Test_ProvisionerServer_DriverRevokeBucketAccess_RemoveBucketPolicyStatement
 	gotResponse, gotErr := s.DriverRevokeBucketAccess(ctx, req)
 
 	// assert
-	if gotResponse != nil || !reflect.DeepEqual(gotErr, wantErr) {
-		t.Errorf("Test_ProvisionerServer_DriverRevokeBucketAccess_RemoveBucketPolicyStatement_Failed failed, "+
-			"wantResponse= nil, gotResponse= [%v], wantErr= [%v], gotErr= [%v]", gotResponse, wantErr, gotErr)
-	}
+	assert.Nil(t, gotResponse)
+	assert.Equal(t, wantErr.Error(), gotErr.Error())
 
 	// cleanup
 	t.Cleanup(func() {
@@ -213,35 +204,30 @@ func Test_ProvisionerServer_DriverRevokeBucketAccess_RemoveBucketPolicyStatement
 func Test_RemoveUser_Normal_Success(t *testing.T) {
 	// arrange
 	ctx := context.TODO()
-	accountSecret := &coreV1.Secret{}
+	accountSecret := &coreV1.Secret{
+		Data: map[string][]byte{
+			ak:       []byte("accessKey123"),
+			sk:       []byte("secretKey123"),
+			endpoint: []byte("https://xxxx.com:8088"),
+		},
+	}
 	userName := "user-demo"
 	c := &poe.Client{}
 	listUserAksResp := &api.ListUserAccessKeysOutput{AccessKeys: []string{"ak-1"}}
 
 	// mock
-	mock := gomonkey.
-		ApplyFunc(user.NewUserClient, func(user.Config) (api.UserAPI, error) {
-			return c, nil
-		}).ApplyMethod(reflect.TypeOf(c), "ListUserAccessKeys",
-		func(_ *poe.Client, ctx context.Context, in *api.ListUserAccessKeysInput) (*api.ListUserAccessKeysOutput, error) {
-			return listUserAksResp, nil
-		}).ApplyMethod(reflect.TypeOf(c), "DeleteUserAccess",
-		func(_ *poe.Client, ctx context.Context, in *api.DeleteUserAccessInput) (*api.DeleteUserAccessOutput, error) {
-			return nil, nil
-		}).ApplyMethod(reflect.TypeOf(c), "DeleteUser",
-		func(_ *poe.Client, ctx context.Context, in *api.DeleteUserInput) (*api.DeleteUserOutput, error) {
-			return nil, nil
-		})
+	mock := gomonkey.ApplyFuncReturn(user.NewUserClient, c, nil).
+		ApplyMethodReturn(c, "ListUserAccessKeys", listUserAksResp, nil).
+		ApplyMethodReturn(c, "DeleteUserAccess", nil, nil).
+		ApplyMethodReturn(c, "DeleteUser", nil, nil)
 
 	// act
 	gotErr := removeUser(ctx, accountSecret, userName)
 
 	// assert
-	if gotErr != nil {
-		t.Errorf("Test_RemoveUser_Normal_Success failed, gotErr= [%v], wantErr= nil", gotErr)
-	}
+	assert.NoError(t, gotErr)
 
-	//cleanup
+	// cleanup
 	t.Cleanup(func() {
 		mock.Reset()
 	})
@@ -261,29 +247,18 @@ func Test_RemoveBucketPolicyStatement_Normal_Success(t *testing.T) {
 	mockBp := &policy.BucketPolicy{Statement: []policy.Statement{statement}}
 
 	// mock
-	mock := gomonkey.
-		ApplyFunc(agent.NewS3Agent, func(agent.Config) (*agent.S3Agent, error) {
-			return c, nil
-		}).ApplyMethod(reflect.TypeOf(c), "GetBucketPolicy",
-		func(_ *agent.S3Agent, ctx context.Context, bucketName string) (*policy.BucketPolicy, error) {
-			return mockBp, nil
-		}).ApplyMethod(reflect.TypeOf(c), "PutBucketPolicy",
-		func(_ *agent.S3Agent, ctx context.Context, bucketName string, bp *policy.BucketPolicy) error {
-			return nil
-		}).ApplyMethod(reflect.TypeOf(c), "DeleteBucketPolicy",
-		func(_ *agent.S3Agent, ctx context.Context, bucketName string) error {
-			return nil
-		})
+	mock := gomonkey.ApplyFuncReturn(agent.NewS3Agent, c, nil)
+	mock.ApplyMethodReturn(c, "GetBucketPolicy", mockBp, nil)
+	mock.ApplyMethodReturn(c, "PutBucketPolicy", nil)
+	mock.ApplyMethodReturn(c, "DeleteBucketPolicy", nil)
 
 	// act
 	gotErr := removeBucketPolicyStatement(ctx, accountSecret, bucketName, userName)
 
 	// assert
-	if gotErr != nil {
-		t.Errorf("Test_RemoveBucketPolicyStatement_Normal_Success failed, gotErr= [%v], wantErr= nil", gotErr)
-	}
+	assert.NoError(t, gotErr)
 
-	//cleanup
+	// cleanup
 	t.Cleanup(func() {
 		mock.Reset()
 	})
@@ -298,23 +273,16 @@ func Test_RemoveBucketPolicyStatement_PolicyNotExist(t *testing.T) {
 	bucketName := "bucket-demo"
 
 	// mock
-	mock := gomonkey.
-		ApplyFunc(agent.NewS3Agent, func(agent.Config) (*agent.S3Agent, error) {
-			return c, nil
-		}).ApplyMethod(reflect.TypeOf(c), "GetBucketPolicy",
-		func(_ *agent.S3Agent, ctx context.Context, bucketName string) (*policy.BucketPolicy, error) {
-			return nil, nil
-		})
+	mock := gomonkey.ApplyFuncReturn(agent.NewS3Agent, c, nil).
+		ApplyMethodReturn(c, "GetBucketPolicy", nil, nil)
 
 	// act
 	gotErr := removeBucketPolicyStatement(ctx, accountSecret, bucketName, userName)
 
 	// assert
-	if gotErr != nil {
-		t.Errorf("Test_RemoveBucketPolicyStatement_PolicyNotExist failed, gotErr= [%v], wantErr= nil", gotErr)
-	}
+	assert.NoError(t, gotErr)
 
-	//cleanup
+	// cleanup
 	t.Cleanup(func() {
 		mock.Reset()
 	})
@@ -328,30 +296,23 @@ func Test_RemoveBucketPolicyStatement_StatementNotExist(t *testing.T) {
 	userName := "user-demo"
 	bucketName := "bucket-demo"
 
-	statmentUserName := "user-demo-2"
+	statementUserName := "user-demo-2"
 	statement := policy.Statement{
-		Sid: statmentUserName,
+		Sid: statementUserName,
 	}
 	mockBp := policy.NewBucketPolicy(statement)
 
 	// mock
-	mock := gomonkey.
-		ApplyFunc(agent.NewS3Agent, func(agent.Config) (*agent.S3Agent, error) {
-			return c, nil
-		}).ApplyMethod(reflect.TypeOf(c), "GetBucketPolicy",
-		func(_ *agent.S3Agent, ctx context.Context, bucketName string) (*policy.BucketPolicy, error) {
-			return mockBp, nil
-		})
+	mock := gomonkey.ApplyFuncReturn(agent.NewS3Agent, c, nil).
+		ApplyMethodReturn(c, "GetBucketPolicy", mockBp, nil)
 
 	// act
 	gotErr := removeBucketPolicyStatement(ctx, accountSecret, bucketName, userName)
 
 	// assert
-	if gotErr != nil {
-		t.Errorf("Test_RemoveBucketPolicyStatement_StatementNotExist failed, gotErr= [%v], wantErr= nil", gotErr)
-	}
+	assert.NoError(t, gotErr)
 
-	//cleanup
+	// cleanup
 	t.Cleanup(func() {
 		mock.Reset()
 	})
@@ -365,10 +326,7 @@ func Test_CheckDriverRevokeBucketAccess_Success(t *testing.T) {
 	gotErr := checkDriverRevokeBucketAccess(req)
 
 	// assert
-	if gotErr != nil {
-		t.Errorf("Test_CheckDriverRevokeBucketAccess_Success failed, "+
-			"gotErr= [%v], wantErr= nil", gotErr)
-	}
+	assert.NoError(t, gotErr)
 }
 
 func Test_CheckDriverRevokeBucketAccess_EmptyBucketId(t *testing.T) {
@@ -380,10 +338,8 @@ func Test_CheckDriverRevokeBucketAccess_EmptyBucketId(t *testing.T) {
 	gotErr := checkDriverRevokeBucketAccess(req)
 
 	// assert
-	if gotErr.Error() != wantErr.Error() {
-		t.Errorf("Test_CheckDriverRevokeBucketAccess_EmptyBucketId failed, "+
-			"gotErr= [%v], wantErr= [%v]", gotErr, wantErr)
-	}
+	assert.Error(t, gotErr)
+	assert.Equal(t, wantErr.Error(), gotErr.Error())
 }
 
 func Test_CheckDriverRevokeBucketAccess_EmptyAccountId(t *testing.T) {
@@ -395,8 +351,56 @@ func Test_CheckDriverRevokeBucketAccess_EmptyAccountId(t *testing.T) {
 	gotErr := checkDriverRevokeBucketAccess(req)
 
 	// assert
-	if gotErr.Error() != wantErr.Error() {
-		t.Errorf("Test_CheckDriverRevokeBucketAccess_EmptyAccountId failed, "+
-			"gotErr= [%v], wantErr= [%v]", gotErr, wantErr)
+	assert.Error(t, gotErr)
+	assert.Equal(t, wantErr.Error(), gotErr.Error())
+}
+
+func TestDriverRevokeBucketAccessWithCentralizedClientSuccess(t *testing.T) {
+	// Arrange
+	ctx := context.TODO()
+	req := &cosispec.DriverRevokeBucketAccessRequest{
+		BucketId:  "namespace/bucket/bucket-name",
+		AccountId: "default/account-secret/user-demo",
 	}
+	s := &provisionerServer{K8sClient: fake.NewSimpleClientset(), keyLock: keylock.NewKeyLock(keyLockSize)}
+
+	// Create account secret with centralized credentials (username/password)
+	accountSecret := &coreV1.Secret{
+		ObjectMeta: metaV1.ObjectMeta{Name: "account-secret", Namespace: "default"},
+		Data: map[string][]byte{
+			username: []byte("admin"),
+			password: []byte("password123"),
+			endpoint: []byte("https://xxxx.com:8088"),
+		},
+	}
+	bcSecret := &coreV1.Secret{
+		Data: map[string][]byte{
+			ak:       []byte("accessKey123"),
+			sk:       []byte("secretKey123"),
+			endpoint: []byte("https://xxxx.com:8088"),
+			rootCA:   []byte(""),
+		},
+	}
+	resource := &resourceIdInfo{acSecretNameSpace: "default", acSecretName: "account-secret", resourceName: "user-demo"}
+
+	// Create secrets in k8s
+	_, err := s.K8sClient.CoreV1().Secrets("default").Create(ctx, accountSecret, metaV1.CreateOptions{})
+	assert.NoError(t, err)
+
+	_, err = s.K8sClient.CoreV1().Secrets("default").Create(ctx, bcSecret, metaV1.CreateOptions{})
+	assert.NoError(t, err)
+
+	// Mock
+	patches := gomonkey.ApplyFuncReturn(checkDriverRevokeBucketAccess, nil).
+		ApplyFuncReturn(fetchDataFromResourceId, resource, accountSecret, nil).
+		ApplyFuncReturn(removeUser, nil).
+		ApplyFuncReturn(removeBucketPolicyStatement, nil)
+	defer patches.Reset()
+
+	// Act
+	gotResponse, gotErr := s.DriverRevokeBucketAccess(ctx, req)
+
+	// Assert
+	assert.NoError(t, gotErr, "DriverRevokeBucketAccess should not fail")
+	assert.NotNil(t, gotResponse, "response should not be nil")
 }

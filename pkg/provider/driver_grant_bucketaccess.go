@@ -28,7 +28,6 @@ import (
 	"github.com/huawei/cosi-driver/pkg/s3/agent"
 	"github.com/huawei/cosi-driver/pkg/s3/errors"
 	"github.com/huawei/cosi-driver/pkg/s3/policy"
-	"github.com/huawei/cosi-driver/pkg/user"
 	"github.com/huawei/cosi-driver/pkg/user/api"
 	"github.com/huawei/cosi-driver/pkg/utils"
 	"github.com/huawei/cosi-driver/pkg/utils/log"
@@ -37,14 +36,13 @@ import (
 // DriverGrantBucketAccess is used to grants access to an account
 func (s *provisionerServer) DriverGrantBucketAccess(ctx context.Context,
 	req *cosispec.DriverGrantBucketAccessRequest) (*cosispec.DriverGrantBucketAccessResponse, error) {
+	log.AddContext(ctx).Infof("handle DriverGrantBucketAccess request, request is [%+v]", req)
 	defer utils.RecoverPanic(ctx)
 
 	// When processing the same bucket, it needs to add mutex lock.
 	// Otherwise, policies will be overwritten abnormally in concurrent scenarios.
 	s.keyLock.Lock(req.GetBucketId())
 	defer s.keyLock.Unlock(req.GetBucketId())
-
-	log.AddContext(ctx).Infof("handle DriverGrantBucketAccess request, request is [%+v]", req)
 
 	err := checkDriverGrantBucketAccessRequest(req)
 	if err != nil {
@@ -147,19 +145,11 @@ func registerUser(ctx context.Context, req *cosispec.DriverGrantBucketAccessRequ
 	bacAccountSecret *coreV1.Secret) (*userInfo, error) {
 	userName := req.GetName()
 
-	// The user client type information will be obtained from the req config in the future.
-	// Currently, default poe type
-	userClient, err := user.NewUserClient(
-		user.Config{
-			ClientType: user.PoeType,
-			AccessKey:  string(bacAccountSecret.Data[ak]),
-			SecretKey:  string(bacAccountSecret.Data[sk]),
-			Endpoint:   string(bacAccountSecret.Data[endpoint]),
-			RootCA:     bacAccountSecret.Data[rootCA],
-		})
+	userClient, err := buildClientFromSecret(ctx, bacAccountSecret)
 	if err != nil {
-		return nil, fmt.Errorf("new user client failed, error is [%v]", err)
+		return nil, fmt.Errorf("build client from secret failed, error is [%v]", err)
 	}
+	defer userClient.Close(ctx)
 
 	var userArn string
 	getUserResp, err := userClient.GetUser(ctx, &api.GetUserInput{UserName: userName})

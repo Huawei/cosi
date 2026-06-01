@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/agiledragon/gomonkey/v2"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/huawei/cosi-driver/pkg/user/clientset/poe"
 )
@@ -61,4 +62,21 @@ func Test_NewUserClient_Default(t *testing.T) {
 		t.Errorf("Test_NewUserClient_Default failed, gotApi= [%v], wantApi= [%v], "+
 			"gotErr= [%v], wantErr= [%v]", gotApi, nil, gotErr, wantErr)
 	}
+}
+
+func TestNewUserClientCentralizedType(t *testing.T) {
+	// arrange
+	c := Config{
+		ClientType: CentralizedType,
+		Username:   "fake-user",
+		Password:   "fake-pwd",
+		Endpoint:   "https://xxxx:8088",
+	}
+
+	// act
+	gotApi, gotErr := NewUserClient(c)
+
+	// assert
+	assert.NoError(t, gotErr)
+	assert.NotNil(t, gotApi)
 }

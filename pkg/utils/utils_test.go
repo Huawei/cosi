@@ -1,5 +1,5 @@
 /*
- Copyright (c) Huawei Technologies Co., Ltd. 2024-2024. All rights reserved.
+ Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -16,7 +16,11 @@
 package utils
 
 import (
+	"crypto/sha256"
+	"crypto/tls"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_GetSortedUrlQueryString(t *testing.T) {
@@ -85,12 +89,12 @@ func Test_BuildTLSConfig_WithRootCA(t *testing.T) {
 	rootCA := []byte("123")
 
 	// act
-	tlsConfig, gotErr := BuildTLSConfig(rootCA)
+	tlsConfig := BuildTLSConfig(rootCA)
 
 	// assert
-	if gotErr != nil || tlsConfig.InsecureSkipVerify == true || tlsConfig.RootCAs == nil {
-		t.Errorf("Test_BuildTLSConfig_WithRootCA failed, gotErr= [%v], gotConfig= [%v]", gotErr, tlsConfig)
-	}
+	assert.False(t, tlsConfig.InsecureSkipVerify)
+	assert.NotNil(t, tlsConfig.RootCAs)
+	assert.Equal(t, uint16(tls.VersionTLS12), tlsConfig.MinVersion)
 }
 
 func Test_BuildTLSConfig_Empty_RootCA(t *testing.T) {
@@ -98,10 +102,47 @@ func Test_BuildTLSConfig_Empty_RootCA(t *testing.T) {
 	rootCA := []byte("")
 
 	// act
-	tlsConfig, gotErr := BuildTLSConfig(rootCA)
+	tlsConfig := BuildTLSConfig(rootCA)
 
 	// assert
-	if gotErr != nil || tlsConfig.InsecureSkipVerify == false || tlsConfig.RootCAs != nil {
-		t.Errorf("Test_BuildTLSConfig_Empty_RootCA failed, gotErr= [%v], gotConfig= [%v]", gotErr, tlsConfig)
+	if tlsConfig.InsecureSkipVerify == false || tlsConfig.RootCAs != nil {
+		t.Errorf("Test_BuildTLSConfig_Empty_RootCA failed, gotConfig= [%v]", tlsConfig)
+	}
+}
+
+func Test_HmacSha256_Success(t *testing.T) {
+	// arrange
+	key := []byte("secret-key")
+	value := []byte("test-value")
+
+	// act
+	got, gotErr := HmacSha256(key, value)
+
+	// assert
+	if gotErr != nil {
+		t.Errorf("Test_HmacSha256_Success failed, gotErr= [%v], wantErr= nil", gotErr)
+	}
+
+	// HMAC-SHA256 should produce 32-byte output
+	if len(got) != 32 {
+		t.Errorf("Test_HmacSha256_Success failed, got length= [%d], want= [32]", len(got))
+	}
+}
+
+func Test_HmacSha256_EmptyInput(t *testing.T) {
+	// arrange
+	key := []byte("")
+	value := []byte("")
+
+	// act
+	got, gotErr := HmacSha256(key, value)
+
+	// assert
+	if gotErr != nil {
+		t.Errorf("Test_HmacSha256_EmptyInput failed, gotErr= [%v], wantErr= nil", gotErr)
+	}
+
+	if len(got) != sha256.Size {
+		t.Errorf("Test_HmacSha256_EmptyInput failed, got length= [%d], want= [%d]", len(got), sha256.Size)
 	}
 }

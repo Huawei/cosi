@@ -71,10 +71,7 @@ func NewS3Agent(cfg Config) (*S3Agent, error) {
 		return nil, fmt.Errorf("secret key is empty")
 	}
 
-	tlsConfig, err := utils.BuildTLSConfig(cfg.RootCA)
-	if err != nil {
-		return nil, fmt.Errorf("build tls config failed, error is [%v]", err)
-	}
+	tlsConfig := utils.BuildTLSConfig(cfg.RootCA)
 
 	tr := &http.Transport{
 		TLSClientConfig: tlsConfig,

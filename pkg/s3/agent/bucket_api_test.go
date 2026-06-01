@@ -1,5 +1,5 @@
 /*
- Copyright (c) Huawei Technologies Co., Ltd. 2024-2024. All rights reserved.
+ Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -156,6 +156,59 @@ func Test_S3Agent_DeleteBucket_Failed(t *testing.T) {
 	// assert
 	if !reflect.DeepEqual(wantErr, gotErr) {
 		t.Errorf("Test_S3Agent_DeleteBucket_Failed failed, gotErr= [%v], wantErr= [%v]", gotErr, wantErr)
+	}
+
+	// cleanup
+	t.Cleanup(func() {
+		mock.Reset()
+	})
+}
+
+func Test_S3Agent_CheckBucketExist_Success(t *testing.T) {
+	// arrange
+	s3Client := &s3.S3{}
+	s3Agent := S3Agent{Client: s3Client}
+	bucketName := "test-bucket"
+
+	// mock
+	mock := gomonkey.ApplyMethod(reflect.TypeOf(s3Client), "HeadBucket",
+		func(_ *s3.S3, input *s3.HeadBucketInput) (*s3.HeadBucketOutput, error) {
+			return nil, nil
+		})
+
+	// act
+	gotErr := s3Agent.CheckBucketExist(context.TODO(), bucketName)
+
+	// assert
+	if gotErr != nil {
+		t.Errorf("Test_S3Agent_CheckBucketExist_Success failed, gotErr= [%v], wantErr= nil", gotErr)
+	}
+
+	// cleanup
+	t.Cleanup(func() {
+		mock.Reset()
+	})
+}
+
+func Test_S3Agent_CheckBucketExist_Failed(t *testing.T) {
+	// arrange
+	s3Client := &s3.S3{}
+	s3Agent := S3Agent{Client: s3Client}
+	bucketName := "test-bucket"
+	checkErr := fmt.Errorf("bucket not found")
+
+	// mock
+	mock := gomonkey.ApplyMethod(reflect.TypeOf(s3Client), "HeadBucket",
+		func(_ *s3.S3, input *s3.HeadBucketInput) (*s3.HeadBucketOutput, error) {
+			return nil, checkErr
+		})
+
+	// act
+	gotErr := s3Agent.CheckBucketExist(context.TODO(), bucketName)
+
+	// assert
+	if gotErr == nil {
+		t.Errorf("Test_S3Agent_CheckBucketExist_Failed failed, gotErr= nil, wantErr= not nil")
 	}
 
 	// cleanup
