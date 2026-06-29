@@ -33,19 +33,17 @@ func Test_NewProvisionerServer_Success(t *testing.T) {
 
 	// mock
 	kubeConfig := &rest.Config{}
-	k8sClient := &kubernetes.Clientset{}
-	cosiClient := &cosiclientset.Clientset{}
 
-	patches := gomonkey.ApplyFunc(utils.GetKubeConfig, func(_ string) (*rest.Config, error) {
+	patches := gomonkey.ApplyFunc(utils.GetKubeConfig, func(_ string, _ utils.ClientConfig) (*rest.Config, error) {
 		return kubeConfig, nil
-	}).ApplyFunc(kubernetes.NewForConfig, func(_ *rest.Config) (*kubernetes.Clientset, error) {
-		return k8sClient, nil
-	}).ApplyFunc(cosiclientset.NewForConfig, func(_ *rest.Config) (*cosiclientset.Clientset, error) {
-		return cosiClient, nil
 	})
 
 	// act
-	server, gotErr := NewProvisionerServer(provisioner, kubeConfigPath)
+	config := utils.ClientConfig{
+		QPS:   utils.DefaultClientQPS,
+		Burst: utils.DefaultClientBurst,
+	}
+	server, gotErr := NewProvisionerServer(provisioner, kubeConfigPath, config)
 
 	// assert
 	if gotErr != nil {
@@ -69,12 +67,13 @@ func Test_NewProvisionerServer_GetKubeConfigFailed(t *testing.T) {
 	wantErr := fmt.Errorf("get kube config failed, error is [demo error]")
 
 	// mock
-	patches := gomonkey.ApplyFunc(utils.GetKubeConfig, func(_ string) (*rest.Config, error) {
+	patches := gomonkey.ApplyFunc(utils.GetKubeConfig, func(_ string, _ utils.ClientConfig) (*rest.Config, error) {
 		return nil, wantErr
 	})
 
 	// act
-	_, gotErr := NewProvisionerServer(provisioner, kubeConfigPath)
+	_, gotErr := NewProvisionerServer(provisioner, kubeConfigPath,
+		utils.ClientConfig{QPS: utils.DefaultClientQPS, Burst: utils.DefaultClientBurst})
 
 	// assert
 	if gotErr == nil {
@@ -95,14 +94,15 @@ func Test_NewProvisionerServer_NewK8sClientFailed(t *testing.T) {
 	wantErr := fmt.Errorf("new k8s client failed, error is [demo error]")
 
 	// mock
-	patches := gomonkey.ApplyFunc(utils.GetKubeConfig, func(_ string) (*rest.Config, error) {
+	patches := gomonkey.ApplyFunc(utils.GetKubeConfig, func(_ string, _ utils.ClientConfig) (*rest.Config, error) {
 		return kubeConfig, nil
 	}).ApplyFunc(kubernetes.NewForConfig, func(_ *rest.Config) (*kubernetes.Clientset, error) {
 		return nil, wantErr
 	})
 
 	// act
-	_, gotErr := NewProvisionerServer(provisioner, kubeConfigPath)
+	_, gotErr := NewProvisionerServer(provisioner, kubeConfigPath,
+		utils.ClientConfig{QPS: utils.DefaultClientQPS, Burst: utils.DefaultClientBurst})
 
 	// assert
 	if gotErr == nil {
@@ -124,7 +124,7 @@ func Test_NewProvisionerServer_NewCosiClientFailed(t *testing.T) {
 	wantErr := fmt.Errorf("new cosi client failed, error is [demo error]")
 
 	// mock
-	patches := gomonkey.ApplyFunc(utils.GetKubeConfig, func(_ string) (*rest.Config, error) {
+	patches := gomonkey.ApplyFunc(utils.GetKubeConfig, func(_ string, _ utils.ClientConfig) (*rest.Config, error) {
 		return kubeConfig, nil
 	}).ApplyFunc(kubernetes.NewForConfig, func(_ *rest.Config) (*kubernetes.Clientset, error) {
 		return k8sClient, nil
@@ -133,11 +133,39 @@ func Test_NewProvisionerServer_NewCosiClientFailed(t *testing.T) {
 	})
 
 	// act
-	_, gotErr := NewProvisionerServer(provisioner, kubeConfigPath)
+	_, gotErr := NewProvisionerServer(provisioner, kubeConfigPath,
+		utils.ClientConfig{QPS: utils.DefaultClientQPS, Burst: utils.DefaultClientBurst})
 
 	// assert
 	if gotErr == nil {
 		t.Errorf("Test_NewProvisionerServer_NewCosiClientFailed failed, gotErr= nil, wantErr= not nil")
+	}
+
+	// cleanup
+	t.Cleanup(func() {
+		patches.Reset()
+	})
+}
+
+func TestNewProvisionerServerKubeConfigNil(t *testing.T) {
+	// arrange
+	provisioner := "cosi.huawei.com"
+	kubeConfigPath := ""
+
+	// mock: return nil kubeConfig without error, and mock NewForConfig to avoid panic
+	patches := gomonkey.ApplyFunc(utils.GetKubeConfig, func(_ string, _ utils.ClientConfig) (*rest.Config, error) {
+		return nil, nil
+	}).ApplyFunc(kubernetes.NewForConfig, func(_ *rest.Config) (*kubernetes.Clientset, error) {
+		return nil, fmt.Errorf("kube config is nil")
+	})
+
+	// act
+	_, gotErr := NewProvisionerServer(provisioner, kubeConfigPath,
+		utils.ClientConfig{QPS: utils.DefaultClientQPS, Burst: utils.DefaultClientBurst})
+
+	// assert
+	if gotErr == nil {
+		t.Errorf("TestNewProvisionerServerKubeConfigNil failed, gotErr= nil, wantErr= not nil")
 	}
 
 	// cleanup

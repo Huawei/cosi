@@ -21,6 +21,7 @@ import (
 	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"net/url"
 	"runtime/debug"
 	"sort"
@@ -30,6 +31,19 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/huawei/cosi-driver/pkg/utils/log"
+)
+
+// ClientConfig contains Kubernetes client configuration
+type ClientConfig struct {
+	QPS   float64
+	Burst int
+}
+
+const (
+	// DefaultClientQPS is the default requests per second for the client
+	DefaultClientQPS = 5.0
+	// DefaultClientBurst is the default burst capacity for the client
+	DefaultClientBurst = 10
 )
 
 // HmacSha256 gets hmac sha256 value of input
@@ -63,7 +77,7 @@ func GetSortedUrlQueryString(param map[string]string) string {
 }
 
 // GetKubeConfig is used to get kube config by path, if path is "", then return inCluster config
-func GetKubeConfig(kubeConfigPath string) (*rest.Config, error) {
+func GetKubeConfig(kubeConfigPath string, config ClientConfig) (*rest.Config, error) {
 	var kubeConfig *rest.Config
 	var err error
 
@@ -75,8 +89,35 @@ func GetKubeConfig(kubeConfigPath string) (*rest.Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	if kubeConfig == nil {
+		return nil, fmt.Errorf("kubeConfig is nil")
+	}
+
+	if err := validateClientConfig(config); err != nil {
+		return nil, err
+	}
+
+	if config.QPS > 0 {
+		kubeConfig.QPS = float32(config.QPS)
+	}
+	if config.Burst > 0 {
+		kubeConfig.Burst = config.Burst
+	}
 
 	return kubeConfig, nil
+}
+
+func validateClientConfig(config ClientConfig) error {
+	if config.QPS < 0 {
+		return fmt.Errorf("invalid qps value [%v], must be >= 0", config.QPS)
+	}
+	if config.Burst < 0 {
+		return fmt.Errorf("invalid burst value [%v], must be >= 0", config.Burst)
+	}
+	if config.QPS > 0 && float64(config.Burst) <= config.QPS {
+		return fmt.Errorf("invalid burst value [%v], must be >= qps value [%v]", config.Burst, config.QPS)
+	}
+	return nil
 }
 
 // RecoverPanic used to recover panic

@@ -126,6 +126,8 @@ spec:
             - --log-file={{ ((.Values.global).logging).loggingFileName | default "cosi-driver" }}
             - --log-file-size={{ ((.Values.global).logging).fileSize | default "20M" }}
             - --max-backups={{ int ((.Values.global).logging).maxBackups | default 9 }}
+            - --kube-api-qps={{ float64 (((.Values.deploy).cosiProvisioner).driver).kubeApiQps | default 5 }}
+            - --kube-api-burst={{ int (((.Values.deploy).cosiProvisioner).driver).kubeApiBurst | default 10 }}
           env:
             - name: env-namepsace
               valueFrom:

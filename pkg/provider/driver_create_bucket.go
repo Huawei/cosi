@@ -39,7 +39,7 @@ func (s *provisionerServer) DriverCreateBucket(ctx context.Context,
 	err := checkDriverCreateBucketRequest(req)
 	if err != nil {
 		msg := fmt.Sprintf("check DriverCreateBucket failed, error is [%v]", err)
-		log.AddContext(ctx).Errorf(msg)
+		log.AddContext(ctx).Errorf("%s", msg)
 		return nil, status.Error(codes.Internal, msg)
 	}
 
@@ -48,14 +48,14 @@ func (s *provisionerServer) DriverCreateBucket(ctx context.Context,
 	s3Client, err := newS3Client(ctx, s.K8sClient, parameters)
 	if err != nil {
 		msg := fmt.Sprintf("new s3 client failed, err is [%v]", err)
-		log.AddContext(ctx).Errorf(msg)
+		log.AddContext(ctx).Errorf("%s", msg)
 		return nil, status.Error(codes.Internal, msg)
 	}
 
 	err = s3Client.CreateBucket(ctx, bucketName, parameters[bucketACL], parameters[bucketLocation])
 	if err != nil {
 		msg := fmt.Sprintf("create bucket [%s] failed, error is [%v]", bucketName, err)
-		log.AddContext(ctx).Errorf(msg)
+		log.AddContext(ctx).Errorf("%s", msg)
 		return nil, status.Error(codes.Internal, msg)
 	}
 

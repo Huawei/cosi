@@ -47,21 +47,21 @@ func (s *provisionerServer) DriverGrantBucketAccess(ctx context.Context,
 	err := checkDriverGrantBucketAccessRequest(req)
 	if err != nil {
 		msg := fmt.Sprintf("check DriverGrantBucketAccessRequest failed, error is [%v]", err)
-		log.AddContext(ctx).Errorf(msg)
+		log.AddContext(ctx).Errorf("%s", msg)
 		return nil, status.Error(codes.Internal, msg)
 	}
 
 	bucketIdData, bcAccountSecret, err := fetchDataFromResourceId(req.GetBucketId(), s.K8sClient)
 	if err != nil {
 		msg := fmt.Sprintf("fetch data from resourceId [%s] failed, error is [%v]", req.GetBucketId(), err)
-		log.AddContext(ctx).Errorf(msg)
+		log.AddContext(ctx).Errorf("%s", msg)
 		return nil, status.Error(codes.Internal, msg)
 	}
 
 	err = checkBucketExistence(ctx, bcAccountSecret, bucketIdData.resourceName)
 	if err != nil {
 		msg := fmt.Sprintf("check bucket existence failed, error is [%v]", err)
-		log.AddContext(ctx).Errorf(msg)
+		log.AddContext(ctx).Errorf("%s", msg)
 		return nil, status.Error(codes.Internal, msg)
 	}
 
@@ -69,21 +69,21 @@ func (s *provisionerServer) DriverGrantBucketAccess(ctx context.Context,
 		Get(ctx, req.Parameters[accountSecretName], metaV1.GetOptions{})
 	if err != nil {
 		msg := fmt.Sprintf("failed to get account secret from paramters, error is [%v]", err)
-		log.AddContext(ctx).Errorf(msg)
+		log.AddContext(ctx).Errorf("%s", msg)
 		return nil, status.Error(codes.Internal, msg)
 	}
 
 	userData, err := registerUser(ctx, req, bacAccountSecret)
 	if err != nil {
 		msg := fmt.Sprintf("register user failed, error is [%v]", err)
-		log.AddContext(ctx).Errorf(msg)
+		log.AddContext(ctx).Errorf("%s", msg)
 		return nil, status.Error(codes.Internal, msg)
 	}
 
 	err = setBucketPolicy(ctx, req, bcAccountSecret, userData, bucketIdData.resourceName)
 	if err != nil {
 		msg := fmt.Sprintf("set bucket policy about user failed, error is [%v]", err)
-		log.AddContext(ctx).Errorf(msg)
+		log.AddContext(ctx).Errorf("%s", msg)
 		return nil, status.Error(codes.Internal, msg)
 	}
 

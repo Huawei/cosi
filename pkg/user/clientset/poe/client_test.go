@@ -55,7 +55,7 @@ func TestNewPoeClient_InvalidEndpoint(t *testing.T) {
 	ak := "test-ak"
 	sk := "test-sk"
 	endpoint := "https://x.xx.xx.xx:443:xx"
-	errMsg := "parse \"https://x.xx.xx.xx:443:xx\": invalid port \":xx\" after host"
+	errMsg := `parse "https://x.xx.xx.xx:443:xx": invalid port ":443:xx" after host`
 	wantErr := fmt.Errorf("url parse endpoint [%s] failed, error is [%v]", endpoint, errMsg)
 
 	// act

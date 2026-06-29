@@ -70,7 +70,7 @@ func (pec *Client) DeleteUserAccess(ctx context.Context,
 	if err != nil {
 		if errors.Is(err, errNoSuchUserAccess) {
 			msg := fmt.Sprintf("user access [%s/%s] is not exist", in.UserName, in.AccessKeyId)
-			log.AddContext(ctx).Infof(msg)
+			log.AddContext(ctx).Infof("%s", msg)
 			return &api.DeleteUserAccessOutput{}, nil
 		}
 
@@ -99,7 +99,7 @@ func (pec *Client) ListUserAccessKeys(ctx context.Context,
 	if err != nil {
 		if errors.Is(err, errNoSuchUser) {
 			msg := fmt.Sprintf("user [%s] is not exist", in.UserName)
-			log.AddContext(ctx).Infof(msg)
+			log.AddContext(ctx).Infof("%s", msg)
 			return &api.ListUserAccessKeysOutput{}, nil
 		}
 

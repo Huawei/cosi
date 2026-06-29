@@ -37,7 +37,7 @@ func (s *provisionerServer) DriverDeleteBucket(ctx context.Context,
 	bucketIdData, bcAccountSecret, err := fetchDataFromResourceId(req.GetBucketId(), s.K8sClient)
 	if err != nil {
 		msg := fmt.Sprintf("fetch data from resourceId [%s] failed, error is [%v]", req.GetBucketId(), err)
-		log.AddContext(ctx).Errorf(msg)
+		log.AddContext(ctx).Errorf("%s", msg)
 		return nil, status.Error(codes.Internal, msg)
 	}
 
@@ -50,14 +50,14 @@ func (s *provisionerServer) DriverDeleteBucket(ctx context.Context,
 		})
 	if err != nil {
 		msg := fmt.Sprintf("new s3 client failed, err is [%v]", err)
-		log.AddContext(ctx).Errorf(msg)
+		log.AddContext(ctx).Errorf("%s", msg)
 		return nil, status.Error(codes.Internal, msg)
 	}
 
 	err = s3Agent.DeleteBucket(ctx, bucketIdData.resourceName)
 	if err != nil {
 		msg := fmt.Sprintf("failed to delete bucket [%s], err is [%v]", bucketIdData.resourceName, err)
-		log.AddContext(ctx).Errorf(msg)
+		log.AddContext(ctx).Errorf("%s", msg)
 		return nil, status.Error(codes.Internal, msg)
 	}
 

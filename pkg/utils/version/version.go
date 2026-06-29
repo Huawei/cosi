@@ -46,7 +46,10 @@ func RegisterVersion(containerName, version, kubeConfigPath string) error {
 		namespace = defaultNamespace
 	}
 
-	kubeConfig, err := utils.GetKubeConfig(kubeConfigPath)
+	kubeConfig, err := utils.GetKubeConfig(kubeConfigPath, utils.ClientConfig{
+		QPS:   utils.DefaultClientQPS,
+		Burst: utils.DefaultClientBurst,
+	})
 	if err != nil {
 		return fmt.Errorf("get kube config failed, error is [%v]", err)
 	}

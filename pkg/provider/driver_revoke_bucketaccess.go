@@ -46,14 +46,14 @@ func (s *provisionerServer) DriverRevokeBucketAccess(ctx context.Context,
 	err := checkDriverRevokeBucketAccess(req)
 	if err != nil {
 		msg := fmt.Sprintf("check DriverRevokeBucketAccessRequest failed, error is [%v]", err)
-		log.AddContext(ctx).Errorf(msg)
+		log.AddContext(ctx).Errorf("%s", msg)
 		return nil, status.Error(codes.Internal, msg)
 	}
 
 	accountIdData, bacAccountSecret, err := fetchDataFromResourceId(req.GetAccountId(), s.K8sClient)
 	if err != nil {
 		msg := fmt.Sprintf("fetch data from resourceId [%s] failed, error is [%v]", req.GetAccountId(), err)
-		log.AddContext(ctx).Errorf(msg)
+		log.AddContext(ctx).Errorf("%s", msg)
 		return nil, status.Error(codes.Internal, msg)
 	}
 
@@ -61,14 +61,14 @@ func (s *provisionerServer) DriverRevokeBucketAccess(ctx context.Context,
 	err = removeUser(ctx, bacAccountSecret, userName)
 	if err != nil {
 		msg := fmt.Sprintf("remove user [%s] failed, error is [%v]", userName, err)
-		log.AddContext(ctx).Errorf(msg)
+		log.AddContext(ctx).Errorf("%s", msg)
 		return nil, status.Error(codes.Internal, msg)
 	}
 
 	bucketIdData, bcAccountSecret, err := fetchDataFromResourceId(req.GetBucketId(), s.K8sClient)
 	if err != nil {
 		msg := fmt.Sprintf("fetch data from resourceId [%s] failed, error is [%v]", req.GetBucketId(), err)
-		log.AddContext(ctx).Errorf(msg)
+		log.AddContext(ctx).Errorf("%s", msg)
 		return nil, status.Error(codes.Internal, msg)
 	}
 
@@ -77,7 +77,7 @@ func (s *provisionerServer) DriverRevokeBucketAccess(ctx context.Context,
 	if err != nil {
 		msg := fmt.Sprintf("remove bucket policy statement of user [%s] failed, "+
 			"error is [%v]", userName, err)
-		log.AddContext(ctx).Errorf(msg)
+		log.AddContext(ctx).Errorf("%s", msg)
 		return nil, status.Error(codes.Internal, msg)
 	}
 

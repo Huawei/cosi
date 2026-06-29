@@ -20,11 +20,18 @@ import (
 
 	cosispec "sigs.k8s.io/container-object-storage-interface-spec"
 
+	"github.com/huawei/cosi-driver/pkg/utils"
 	"github.com/huawei/cosi-driver/pkg/utils/log"
 )
 
+// KubeConfigOptions contains Kubernetes client configuration options
+type KubeConfigOptions struct {
+	KubeConfigPath string
+	utils.ClientConfig
+}
+
 // NewDriver return a new cosi driver
-func NewDriver(ctx context.Context, driverName, kubeConfigPath string) (cosispec.IdentityServer,
+func NewDriver(ctx context.Context, driverName string, opts KubeConfigOptions) (cosispec.IdentityServer,
 	cosispec.ProvisionerServer, error) {
 	is, err := NewIdentityServer(driverName)
 	if err != nil {
@@ -32,7 +39,7 @@ func NewDriver(ctx context.Context, driverName, kubeConfigPath string) (cosispec
 		return nil, nil, err
 	}
 
-	ps, err := NewProvisionerServer(driverName, kubeConfigPath)
+	ps, err := NewProvisionerServer(driverName, opts.KubeConfigPath, opts.ClientConfig)
 	if err != nil {
 		log.AddContext(ctx).Errorf("failed to create provisioner server, error is [%v]", err)
 		return nil, nil, err

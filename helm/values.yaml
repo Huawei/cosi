@@ -58,6 +58,14 @@ deploy:
     # Default value:  cosi.huawei.com
     driverName: cosi.huawei.com
 
+    driver:
+      # The cosi-driver container uses kube-client to access kube-apiserver. By default, kube-client uses the token bucket algorithm:
+      # kubeApiQps default value 5.0: The client sends a maximum of 5.0 requests per second to smoothly control the request rate.
+      # kubeApiBurst default value 10: It allows up to 10 requests to be sent in a short period of time to cope with sudden demands.
+      # Modify this configuration with caution. Excessive amplification of this configuration may cause excessive pressure on kube-apiserver, which may cause kube-apiserver to not run smoothly
+      kubeApiQps: 5.0
+      kubeApiBurst: 10
+
     # Define node selection constraints for node pods.
     nodeSelector: {}
     # Tolerations allow the scheduler to schedule pods with matching taints

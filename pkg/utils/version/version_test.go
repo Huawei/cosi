@@ -17,12 +17,16 @@ package version
 
 import (
 	"errors"
+	"os"
 	"reflect"
 	"testing"
 
 	"github.com/agiledragon/gomonkey/v2"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/rest"
+
+	"github.com/huawei/cosi-driver/pkg/utils"
 )
 
 func Test_InitVersionConfigMap_Success(t *testing.T) {
@@ -68,4 +72,76 @@ func Test_InitVersionConfigMap_Create_Failed(t *testing.T) {
 	t.Cleanup(func() {
 		p.Reset()
 	})
+}
+
+func TestRegisterVersionGetKubeConfigFailed(t *testing.T) {
+	// arrange
+	containerName := "cosi-test"
+	version := "v1.0.0"
+	kubeConfigPath := ""
+
+	// mock
+	p := gomonkey.ApplyFunc(utils.GetKubeConfig, func(_ string, _ utils.ClientConfig) (*rest.Config, error) {
+		return nil, errors.New("get kube config failed")
+	})
+
+	// act
+	gotErr := RegisterVersion(containerName, version, kubeConfigPath)
+
+	// assert
+	if gotErr == nil {
+		t.Errorf("TestRegisterVersionGetKubeConfigFailed failed, gotErr= nil, wantErr= not nil")
+	}
+
+	// cleanup
+	t.Cleanup(func() {
+		p.Reset()
+	})
+}
+
+func TestRegisterVersionNewK8sClientFailed(t *testing.T) {
+	// arrange
+	containerName := "cosi-test"
+	version := "v1.0.0"
+	kubeConfigPath := ""
+
+	// mock
+	p := gomonkey.ApplyFuncSeq(utils.GetKubeConfig, []gomonkey.OutputCell{
+		{Values: gomonkey.Params{nil, nil}},
+	})
+	p.ApplyFuncSeq(kubernetes.NewForConfig, []gomonkey.OutputCell{
+		{Values: gomonkey.Params{nil, errors.New("new k8s client failed")}},
+	})
+
+	// act
+	gotErr := RegisterVersion(containerName, version, kubeConfigPath)
+
+	// assert
+	if gotErr == nil {
+		t.Errorf("TestRegisterVersionNewK8sClientFailed failed, gotErr= nil, wantErr= not nil")
+	}
+
+	// cleanup
+	t.Cleanup(func() {
+		p.Reset()
+	})
+}
+
+func TestRegisterVersionWithCustomNamespace(t *testing.T) {
+	// arrange
+	customNamespace := "custom-namespace"
+
+	// set custom namespace
+	err := os.Setenv(envNameSpace, customNamespace)
+	if err != nil {
+		t.Fatalf("TestRegisterVersionWithCustomNamespace setup failed, os.Setenv error= [%v]", err)
+	}
+	defer os.Unsetenv(envNameSpace)
+
+	// assert: verify the namespace environment variable is set correctly
+	gotNamespace := os.Getenv(envNameSpace)
+	if gotNamespace != customNamespace {
+		t.Errorf("TestRegisterVersionWithCustomNamespace failed, gotNamespace= [%v], wantNamespace= [%v]", gotNamespace,
+			customNamespace)
+	}
 }

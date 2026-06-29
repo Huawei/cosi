@@ -55,7 +55,7 @@ func (s *S3Agent) PutBucketPolicy(ctx context.Context, bucketName string, bp *po
 			return fmt.Errorf("put bucket policy failed, error is [%v]", err)
 		} else {
 			msg := fmt.Sprintf("exceptional case about putting bucket policy, message is [%s]", awsErr)
-			log.AddContext(ctx).Infof(msg)
+			log.AddContext(ctx).Infof("%s", msg)
 			return nil
 		}
 	}
@@ -84,7 +84,7 @@ func (s *S3Agent) GetBucketPolicy(ctx context.Context, bucketName string,
 			return nil, fmt.Errorf("get bucket policy failed, error is [%v]", err)
 		} else {
 			msg := fmt.Sprintf("exceptional case about getting bucket policy, message is [%s]", awsErr)
-			log.AddContext(ctx).Infof(msg)
+			log.AddContext(ctx).Infof("%s", msg)
 			return nil, nil
 		}
 	}
@@ -117,7 +117,7 @@ func (s *S3Agent) DeleteBucketPolicy(ctx context.Context, bucketName string, exc
 			return fmt.Errorf("delete bucket policy failed, error is [%v]", err)
 		} else {
 			msg := fmt.Sprintf("exceptional case about deleting bucket policy, message is [%s]", awsErr)
-			log.AddContext(ctx).Infof(msg)
+			log.AddContext(ctx).Infof("%s", msg)
 			return nil
 		}
 	}

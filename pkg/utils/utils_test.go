@@ -20,8 +20,13 @@ import (
 	"crypto/tls"
 	"testing"
 
+	"github.com/agiledragon/gomonkey/v2"
 	"github.com/stretchr/testify/assert"
+	"k8s.io/client-go/rest"
 )
+
+// DefaultClientConfigMultiplier is the multiplier for creating test config values
+const DefaultClientConfigMultiplier = 2
 
 func Test_GetSortedUrlQueryString(t *testing.T) {
 	// arrange
@@ -144,5 +149,160 @@ func Test_HmacSha256_EmptyInput(t *testing.T) {
 
 	if len(got) != sha256.Size {
 		t.Errorf("Test_HmacSha256_EmptyInput failed, got length= [%d], want= [%d]", len(got), sha256.Size)
+	}
+}
+
+func TestGetKubeConfigInvalidQPS(t *testing.T) {
+	// arrange
+	config := ClientConfig{
+		QPS:   -1,
+		Burst: 10,
+	}
+
+	// mock
+	p := gomonkey.ApplyFunc(rest.InClusterConfig, func() (*rest.Config, error) {
+		return &rest.Config{}, nil
+	})
+	defer p.Reset()
+
+	// act
+	_, gotErr := GetKubeConfig("", config)
+
+	// assert
+	if gotErr == nil {
+		t.Errorf("TestGetKubeConfigInvalidQPS failed, gotErr= nil, wantErr= not nil")
+	}
+}
+
+func TestGetKubeConfigInvalidBurst(t *testing.T) {
+	// arrange
+	config := ClientConfig{
+		QPS:   DefaultClientQPS,
+		Burst: -1,
+	}
+
+	// mock
+	p := gomonkey.ApplyFunc(rest.InClusterConfig, func() (*rest.Config, error) {
+		return &rest.Config{}, nil
+	})
+	defer p.Reset()
+
+	// act
+	_, gotErr := GetKubeConfig("", config)
+
+	// assert
+	if gotErr == nil {
+		t.Errorf("TestGetKubeConfigInvalidBurst failed, gotErr= nil, wantErr= not nil")
+	}
+}
+
+func TestGetKubeConfigNilKubeConfig(t *testing.T) {
+	// arrange
+	config := ClientConfig{
+		QPS:   DefaultClientQPS,
+		Burst: DefaultClientBurst,
+	}
+
+	// mock: return nil kubeConfig without error
+	p := gomonkey.ApplyFunc(rest.InClusterConfig, func() (*rest.Config, error) {
+		return nil, nil
+	})
+	defer p.Reset()
+
+	// act
+	_, gotErr := GetKubeConfig("", config)
+
+	// assert
+	if gotErr == nil {
+		t.Errorf("TestGetKubeConfigNilKubeConfig failed, gotErr= nil, wantErr= not nil")
+	}
+}
+
+func TestValidateClientConfigBurstLessThanQPS(t *testing.T) {
+	// arrange
+	config := ClientConfig{
+		QPS:   10.0,
+		Burst: 5,
+	}
+
+	// mock
+	p := gomonkey.ApplyFunc(rest.InClusterConfig, func() (*rest.Config, error) {
+		return &rest.Config{}, nil
+	})
+	defer p.Reset()
+
+	// act
+	_, gotErr := GetKubeConfig("", config)
+
+	// assert
+	if gotErr == nil {
+		t.Errorf("TestValidateClientConfigBurstLessThanQPS failed, gotErr= nil, wantErr= not nil")
+	}
+}
+
+func TestGetKubeConfigValidConfig(t *testing.T) {
+	// arrange
+	config := ClientConfig{
+		QPS:   DefaultClientQPS * DefaultClientConfigMultiplier,
+		Burst: DefaultClientBurst * DefaultClientConfigMultiplier,
+	}
+
+	// mock: make InClusterConfig return a valid config
+	p := gomonkey.ApplyFunc(rest.InClusterConfig, func() (*rest.Config, error) {
+		return &rest.Config{}, nil
+	})
+	defer p.Reset()
+
+	// act
+	kubeConfig, gotErr := GetKubeConfig("", config)
+
+	// assert
+	if gotErr != nil {
+		t.Errorf("TestGetKubeConfigValidConfig failed, gotErr= [%v], wantErr= nil", gotErr)
+	}
+	if kubeConfig == nil {
+		t.Errorf("TestGetKubeConfigValidConfig failed, kubeConfig= nil")
+	}
+	if kubeConfig.QPS != float32(config.QPS) {
+		t.Errorf("TestGetKubeConfigValidConfig failed, QPS= [%v], want= [%v]", kubeConfig.QPS, config.QPS)
+	}
+	if kubeConfig.Burst != config.Burst {
+		t.Errorf("TestGetKubeConfigValidConfig failed, Burst= [%v], want= [%v]", kubeConfig.Burst, config.Burst)
+	}
+}
+
+func TestGetKubeConfigZeroQPSAndBurst(t *testing.T) {
+	// arrange
+	config := ClientConfig{
+		QPS:   0,
+		Burst: 0,
+	}
+
+	// mock: make InClusterConfig return a valid config
+	p := gomonkey.ApplyFunc(rest.InClusterConfig, func() (*rest.Config, error) {
+		return &rest.Config{}, nil
+	})
+	defer p.Reset()
+
+	// act
+	kubeConfig, gotErr := GetKubeConfig("", config)
+
+	// assert
+	if gotErr != nil {
+		t.Errorf("TestGetKubeConfigZeroQPSAndBurst failed, gotErr= [%v], wantErr= nil", gotErr)
+	}
+	if kubeConfig == nil {
+		t.Errorf("TestGetKubeConfigZeroQPSAndBurst failed, kubeConfig= nil")
+	}
+}
+
+func TestClientConfigDefaultValues(t *testing.T) {
+	// assert: verify default values are positive and within reasonable range
+	if DefaultClientQPS <= 0 {
+		t.Errorf("TestClientConfigDefaultValues failed, DefaultClientQPS= [%v], want= positive value", DefaultClientQPS)
+	}
+	if DefaultClientBurst <= 0 {
+		t.Errorf("TestClientConfigDefaultValues failed, DefaultClientBurst= [%v], want= positive value",
+			DefaultClientBurst)
 	}
 }

@@ -30,6 +30,7 @@ import (
 	cosispec "sigs.k8s.io/container-object-storage-interface-spec"
 
 	"github.com/huawei/cosi-driver/pkg/provider"
+	"github.com/huawei/cosi-driver/pkg/utils"
 	"github.com/huawei/cosi-driver/pkg/utils/log"
 	"github.com/huawei/cosi-driver/pkg/utils/version"
 )
@@ -42,6 +43,8 @@ var (
 	logFile = flag.String("log-file", "huawei-cosi-driver",
 		"The log file name of the huawei-cosi volume provider")
 	kubeConfigPath = flag.String("kube-config-path", "", "absolute path to the kubeConfig file")
+	kubeAPIQPS     = flag.Float64("kube-api-qps", utils.DefaultClientQPS, "Kubernetes API client QPS limit")
+	kubeAPIBurst   = flag.Int("kube-api-burst", utils.DefaultClientBurst, "Kubernetes API client burst limit")
 )
 
 const (
@@ -94,7 +97,9 @@ func main() {
 		log.AddContext(ctx).Errorf("config cosi socket [%s] failed", *driverAddress)
 	}
 
-	svc, err := initDriverSvc(ctx, *driverName, *kubeConfigPath)
+	kubeOpts := provider.KubeConfigOptions{KubeConfigPath: *kubeConfigPath,
+		ClientConfig: utils.ClientConfig{QPS: *kubeAPIQPS, Burst: *kubeAPIBurst}}
+	svc, err := initDriverSvc(ctx, *driverName, kubeOpts)
 	if err != nil {
 		log.AddContext(ctx).Errorf("init cosi driver service failed, error is [%v]", err)
 		return
@@ -104,7 +109,6 @@ func main() {
 	signalChan := make(chan os.Signal, 1)
 	defer close(signalChan)
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGILL, syscall.SIGKILL, syscall.SIGTERM)
-
 	go func() {
 		if err = svc.Serve(listener); err != nil {
 			log.AddContext(ctx).Errorf("cosi driver service start failed, error is [%v]", err)
@@ -121,8 +125,8 @@ func main() {
 	log.AddContext(ctx).Warningf("stop cosi driver service successfully, stopSignal is [%v]", stopSignal)
 }
 
-func initDriverSvc(ctx context.Context, driverName, kubeConfigPath string) (*grpc.Server, error) {
-	identityServer, provisionerServer, err := provider.NewDriver(ctx, driverName, kubeConfigPath)
+func initDriverSvc(ctx context.Context, driverName string, kubeOpts provider.KubeConfigOptions) (*grpc.Server, error) {
+	identityServer, provisionerServer, err := provider.NewDriver(ctx, driverName, kubeOpts)
 	if err != nil {
 		return nil, fmt.Errorf("new driver failed, error is [%v]", err)
 	}

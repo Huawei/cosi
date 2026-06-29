@@ -68,7 +68,7 @@ func (pec *Client) GetUser(ctx context.Context, in *api.GetUserInput) (*api.GetU
 	if err != nil {
 		if errors.Is(err, errNoSuchUser) {
 			msg := fmt.Sprintf("user [%s] not exist", in.UserName)
-			log.AddContext(ctx).Infof(msg)
+			log.AddContext(ctx).Infof("%s", msg)
 			return nil, nil
 		}
 
@@ -100,7 +100,7 @@ func (pec *Client) DeleteUser(ctx context.Context, in *api.DeleteUserInput) (*ap
 	if err != nil {
 		if errors.Is(err, errNoSuchUser) {
 			msg := fmt.Sprintf("user [%s] is not exist", in.UserName)
-			log.AddContext(ctx).Infof(msg)
+			log.AddContext(ctx).Infof("%s", msg)
 			return &api.DeleteUserOutput{}, nil
 		}
 

@@ -76,7 +76,7 @@ func main() {
 	go func(ch chan os.Signal) {
 		err = http.ListenAndServe(*httpEndpoint, mux)
 		if err != nil {
-			log.AddContext(ctx).Errorf("probe http server listen [%s] failed, error is [%v]", httpEndpoint, err)
+			log.AddContext(ctx).Errorf("probe http server listen [%s] failed, error is [%v]", *httpEndpoint, err)
 			ch <- syscall.SIGINT
 			return
 		}

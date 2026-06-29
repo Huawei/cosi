@@ -36,8 +36,9 @@ type provisionerServer struct {
 var _ cosispec.ProvisionerServer = &provisionerServer{}
 
 // NewProvisionerServer return a new cosi ProvisionerServer
-func NewProvisionerServer(provisioner, kubeConfigPath string) (cosispec.ProvisionerServer, error) {
-	kubeConfig, err := utils.GetKubeConfig(kubeConfigPath)
+func NewProvisionerServer(provisioner, kubeConfigPath string, config utils.ClientConfig) (cosispec.ProvisionerServer,
+	error) {
+	kubeConfig, err := utils.GetKubeConfig(kubeConfigPath, config)
 	if err != nil {
 		return nil, fmt.Errorf("get kube config failed, error is [%v]", err)
 	}
