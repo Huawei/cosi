@@ -26,7 +26,7 @@ set -e
 workdir=$(cd $(dirname $0); pwd)
 
 # tmp dir is used to build binary files and images
-export TMP_DIR_PATH="${workdir}/eSDK_COSI_V${VER}_${PLATFORM}_64"
+export TMP_DIR_PATH="${workdir}/eSDK-Storage-Plugins_COSI-V${VER}_Linux-${PLATFORM}-64"
 # release dir is used to assemble the release package
 release_dir_path="${workdir}/release"
 
@@ -95,8 +95,8 @@ chart_version=$(echo ${VER} | sed -e 's/\([0-9]\+\.[0-9]\+\.[0-9]\+\)\./\1-/')
 sed -i "s/{{version}}/${chart_version}/g" helm/Chart.yaml
 
 # zip the release package and move it to workdir
-zip -rq -o eSDK_Cloud_Storage_COSI_V"${VER}"_"${PLATFORM}"_64.zip ./*
-mv eSDK_Cloud_Storage_COSI_V"${VER}"_"${PLATFORM}"_64.zip "${workdir}"
+zip -rq -o eSDK-Storage-Plugins_COSI-V"${VER}"_Linux-"${PLATFORM}"-64.zip ./*
+mv eSDK-Storage-Plugins_COSI-V"${VER}"_Linux-"${PLATFORM}"-64.zip "${workdir}"
 
 # cd to workdir to remove tmp files
 cd "${workdir}"
